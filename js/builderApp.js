@@ -112,7 +112,7 @@ function isDualArmPart(part) {
 function isDualWeaponPart(part) {
   if (!part) return false;
   const text = `${part.slot || ""} ${part.cat || ""} ${part.name || ""} ${part.note || ""}`;
-  return text.includes("両手");
+  return text.includes("両手") || text.includes("両腕");
 }
 
 function isDualLegPart(part) {
@@ -136,7 +136,8 @@ function normalizeDraftConstraints() {
   if (!state.masterData) return;
   const { byId, parts } = state.masterData;
   const legs = parts.filter((p) => p.cat === "脚部");
-  const fallbackSingleLeg = legs.find((p) => !isDualLegPart(p))?.id || "";
+  const singleLegs = legs.filter((p) => !isDualLegPart(p));
+  const fallbackSingleLeg = singleLegs[0]?.id || "";
 
   const rArm = byId[state.draft.rightArm];
   const lArm = byId[state.draft.leftArm];
@@ -161,6 +162,7 @@ function normalizeDraftConstraints() {
     state.draft.leftWeapon = rWeap.id;
   } else if (isDualWeaponPart(lWeap)) {
     state.draft.rightWeapon = lWeap.id;
+    state.draft.leftWeapon = lWeap.id;
   }
 
   const rLeg = byId[state.draft.rightLeg];
@@ -393,14 +395,18 @@ function renderAll() {
   const heads = parts.filter((p) => p.cat === "頭部");
   const arms = parts.filter((p) => p.cat === "腕部");
   const legs = parts.filter((p) => p.cat === "脚部");
+  const singleLegs = legs.filter((p) => !isDualLegPart(p));
   const equips = parts.filter((p) => ["物理武器", "魔力武器", "シールド"].includes(p.cat));
+  const leftEquips = equips.filter((p) => !isDualWeaponPart(p));
 
   if (!state.draft.core && cores[0]) state.draft.core = cores[0].id;
   if (!state.draft.head && heads[0]) state.draft.head = heads[0].id;
   if (!state.draft.rightArm && arms[0]) state.draft.rightArm = arms[0].id;
   if (!state.draft.leftArm && arms[0]) state.draft.leftArm = arms[0].id;
   if (!state.draft.rightLeg && legs[0]) state.draft.rightLeg = legs[0].id;
-  if (!state.draft.leftLeg && legs[0]) state.draft.leftLeg = legs[0].id;
+  if (!state.draft.leftLeg && (singleLegs[0] || legs[0])) {
+    state.draft.leftLeg = (singleLegs[0] || legs[0]).id;
+  }
 
   normalizeDraftConstraints();
 
@@ -427,14 +433,14 @@ function renderAll() {
   const rWeapObj = byId[state.draft.rightWeapon];
   const lWeapObj = byId[state.draft.leftWeapon];
   const rLegObj = byId[state.draft.rightLeg];
-  const lLegObj = byId[state.draft.leftLeg];
 
   const dualArmActive = isDualArmPart(rArmObj) || isDualArmPart(lArmObj);
   const dualWeaponActive = isDualWeaponPart(rWeapObj) || isDualWeaponPart(lWeapObj);
-  const leftArmDisabled = dualArmActive || dualWeaponActive;
 
+  const leftArmPartDisabled = dualArmActive;
+  const leftWeaponDisabled =
+    dualArmActive || dualWeaponActive || isIntegratedWeaponPart(lArmObj);
   const rightWeaponDisabled = isIntegratedWeaponPart(rArmObj);
-  const leftWeaponDisabled = leftArmDisabled || isIntegratedWeaponPart(lArmObj);
   const leftLegDisabled = isDualLegPart(rLegObj);
 
   renderList(els.rightArmList, arms, state.draft.rightArm, (id) => {
@@ -467,13 +473,12 @@ function renderAll() {
     rightWeaponDisabled
   );
 
-  let leftHintText = "";
-  if (dualArmActive) {
-    leftHintText = "両腕占有パーツ選択中のため、左腕は右腕と同じパーツに固定されています。";
-  } else if (dualWeaponActive) {
-    leftHintText = "両手占有武器選択中のため、左腕・左手は連動して固定されています。";
-  }
-  setBlockState(els.leftArmInner, els.leftArmHint, leftArmDisabled, leftHintText);
+  setBlockState(
+    els.leftArmInner,
+    els.leftArmHint,
+    leftArmPartDisabled,
+    dualArmActive ? "両腕占有パーツ選択中のため、左腕は右腕と同じパーツに固定されています。" : ""
+  );
 
   renderList(
     els.leftArmList,
@@ -488,29 +493,31 @@ function renderAll() {
         state.draft.leftArm = id;
       }
     },
-    leftArmDisabled
+    leftArmPartDisabled
   );
+
+  let leftWeapHintText = "";
+  if (dualWeaponActive) {
+    leftWeapHintText = "両腕占有武器選択中のため、左腕武器は選択できません。";
+  } else if (dualArmActive) {
+    leftWeapHintText = "両腕占有パーツ選択中のため、左腕武器は選択できません。";
+  } else if (isIntegratedWeaponPart(lArmObj)) {
+    leftWeapHintText = "武器一体型パーツ選択中のため、武器は選択できません。";
+  }
 
   setBlockState(
     els.leftWeaponBlock,
     els.leftWeaponHint,
     leftWeaponDisabled,
-    leftArmDisabled
-      ? "両手占有武器または両腕占有パーツ選択中のため選択できません。"
-      : "武器一体型パーツ選択中のため、武器は選択できません。"
+    leftWeapHintText
   );
   renderList(
     els.leftWeaponList,
-    equips,
+    leftEquips,
     state.draft.leftWeapon,
     (id) => {
       const next = state.draft.leftWeapon === id ? "" : id;
       state.draft.leftWeapon = next;
-      if (next && isDualWeaponPart(byId[next])) {
-        state.draft.rightWeapon = next;
-      } else if (!next && isDualWeaponPart(lWeapObj)) {
-        state.draft.rightWeapon = "";
-      }
     },
     leftWeaponDisabled
   );
@@ -520,7 +527,7 @@ function renderAll() {
     state.draft.rightLeg = id;
     if (isDualLegPart(picked)) {
       state.draft.leftLeg = id;
-    } else if (isDualLegPart(lLegObj) || state.draft.leftLeg === rLegObj?.id) {
+    } else if (isDualLegPart(byId[state.draft.leftLeg]) || state.draft.leftLeg === rLegObj?.id) {
       state.draft.leftLeg = id;
     }
   });
@@ -533,7 +540,7 @@ function renderAll() {
   );
   renderList(
     els.leftLegList,
-    legs,
+    singleLegs,
     state.draft.leftLeg,
     (id) => {
       state.draft.leftLeg = id;
