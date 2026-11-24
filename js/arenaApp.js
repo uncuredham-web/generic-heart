@@ -92,22 +92,25 @@ function getAllBuilds() {
 
 function calcFighterStats(build) {
   const byId = state.masterData?.byId || {};
-  const core = byId[build.core] || { hp: 250, maxMp: 100, mpRegen: 15, baseCost: 0 };
-  const head = byId[build.head] || { baseCost: 0, acc: 0 };
-  const rArm = byId[build.rightArm] || { baseCost: 0, acc: 0 };
-  const lArm = byId[build.leftArm] || { baseCost: 0, acc: 0 };
-  const rLeg = byId[build.rightLeg] || { move: 1, baseCost: 0, slot: "片脚" };
-  const lLeg = byId[build.leftLeg] || { move: 1, baseCost: 0, slot: "片脚" };
+  const core = byId[build.core] || { name: "未選択", hp: 250, maxMp: 100, mpRegen: 15, baseCost: 0 };
+  const head = byId[build.head] || { name: "未選択", baseCost: 0, acc: 0 };
+  const rArm = byId[build.rightArm] || { name: "未選択", baseCost: 0, acc: 0 };
+  const lArm = byId[build.leftArm] || { name: "未選択", baseCost: 0, acc: 0 };
+  const rLeg = byId[build.rightLeg] || { name: "未選択", move: 1, baseCost: 0, slot: "片脚" };
+  const lLeg = byId[build.leftLeg] || { name: "未選択", move: 1, baseCost: 0, slot: "片脚" };
   const rWeap = byId[build.rightWeapon] || null;
   const lWeap = byId[build.leftWeapon] || null;
 
   const isDualLeg = String(rLeg.slot || "").includes("両脚");
+  const isDualArm = String(rArm.slot || "").includes("両腕");
+  const isDualWeapon = Boolean(rWeap && String(rWeap.slot || "").includes("両手"));
+
   const activeParts = [core, head, rArm];
-  if (!String(rArm.slot || "").includes("両腕") && build.leftArm) activeParts.push(lArm);
+  if (!isDualArm && build.leftArm) activeParts.push(lArm);
   activeParts.push(rLeg);
   if (!isDualLeg && build.leftLeg) activeParts.push(lLeg);
   if (rWeap) activeParts.push(rWeap);
-  if (lWeap && (!rWeap || lWeap.id !== rWeap.id)) activeParts.push(lWeap);
+  if (!isDualWeapon && lWeap) activeParts.push(lWeap);
 
   const baseCost = activeParts.reduce((sum, p) => sum + (p.baseCost || 0), 0);
   const mpRegen = (core.mpRegen || 0) - baseCost;
@@ -116,14 +119,22 @@ function calcFighterStats(build) {
     .filter(Boolean)
     .reduce((sum, p) => sum + (p.acc || 0), 0);
 
-  const weapons = [];
-  if (rWeap) weapons.push({ ...rWeap, hand: "右手" });
-  if (lWeap && (!rWeap || lWeap.id !== rWeap.id)) weapons.push({ ...lWeap, hand: "左手" });
+  const handWeapons = [];
+  if (rWeap && (rWeap.power || 0) > 0) {
+    handWeapons.push({ ...rWeap, hand: isDualWeapon ? "両手" : "右手" });
+  }
+  if (!isDualWeapon && lWeap && (lWeap.power || 0) > 0) {
+    handWeapons.push({ ...lWeap, hand: "左手" });
+  }
+
+  const builtinWeapons = [];
   [core, head, rArm, lArm].forEach((p, idx) => {
     if ((p.power || 0) > 0) {
-      weapons.push({ ...p, hand: `内蔵${idx + 1}` });
+      builtinWeapons.push({ ...p, hand: `内蔵${idx + 1}` });
     }
   });
+
+  const isDualWield = !isDualWeapon && Boolean(rWeap && lWeap && (rWeap.power || 0) > 0 && (lWeap.power || 0) > 0);
 
   return {
     name: build.name || "名称未設定ゴーレム",
@@ -135,7 +146,22 @@ function calcFighterStats(build) {
     mpRegen,
     move,
     accBonus,
-    weapons
+    handWeapons,
+    builtinWeapons,
+    isDualWield,
+    equipmentSummary: {
+      core: core.name || "なし",
+      head: head.name || "なし",
+      rightArm: rArm.name || "なし",
+      leftArm: isDualArm ? `${rArm.name}（両腕占有）` : (lArm.name || "なし"),
+      leg: isDualLeg
+        ? `${rLeg.name}（両脚占有）`
+        : `${rLeg.name || "なし"} / ${lLeg.name || "なし"}`,
+      rightWeapon: rWeap ? rWeap.name : "なし",
+      leftWeapon: isDualWeapon
+        ? `${rWeap.name}（両手占有）`
+        : (lWeap ? lWeap.name : "なし")
+    }
   };
 }
 
@@ -146,12 +172,19 @@ function renderFighterCard(targetEl, build) {
     return;
   }
   const st = calcFighterStats(build);
+  const eq = st.equipmentSummary;
   targetEl.innerHTML = `
     <div class="preview-header">
       <h3 class="preview-name">${escapeHtml(st.name)}</h3>
       <span class="tag">${escapeHtml(st.tactic)}</span>
     </div>
-    <p class="muted" style="margin:0 0 10px;">さくせん: ${escapeHtml(st.tactic)}</p>
+    <p class="muted" style="margin:0 0 8px;">さくせん: ${escapeHtml(st.tactic)}</p>
+    <div class="equip-summary muted">
+      <div class="equip-row">胴体: ${escapeHtml(eq.core)} / 頭部: ${escapeHtml(eq.head)}</div>
+      <div class="equip-row">右腕: ${escapeHtml(eq.rightArm)} / 左腕: ${escapeHtml(eq.leftArm)}</div>
+      <div class="equip-row">脚部: ${escapeHtml(eq.leg)}</div>
+      <div class="equip-row">右手: ${escapeHtml(eq.rightWeapon)} / 左手: ${escapeHtml(eq.leftWeapon)}</div>
+    </div>
     <div class="stats-grid">
       <div class="stat-box"><div class="stat-label">胴体耐久</div><div class="stat-value">${st.hp}</div></div>
       <div class="stat-box"><div class="stat-label">最大魔力</div><div class="stat-value">${st.mp}</div></div>
@@ -160,22 +193,53 @@ function renderFighterCard(targetEl, build) {
   `;
 }
 
-function pickWeaponForTurn(fighter, distance) {
-  const usable = (fighter.weapons || []).filter(
-    (w) => (w.power || 0) > 0 && (w.useCost || 0) <= fighter.mp
+function selectAttackQueue(fighter, distance) {
+  const handCandidates = (fighter.handWeapons || []).filter(
+    (w) => (w.power || 0) > 0 && distance <= (w.range || 1)
   );
-  if (usable.length === 0) return null;
 
-  const inRange = usable.filter((w) => {
-    const maxR = w.range || 1;
-    return distance <= maxR;
-  });
-
-  const pool = inRange.length > 0 ? inRange : usable;
-  if (fighter.tactic === "省エネ・粘り強く戦え") {
-    return [...pool].sort((a, b) => (a.useCost || 0) - (b.useCost || 0))[0];
+  if (handCandidates.length > 0) {
+    const affordable = handCandidates.filter((w) => (w.useCost || 0) <= fighter.mp);
+    if (affordable.length > 0) {
+      if (fighter.tactic === "省エネ・粘り強く戦え") {
+        return [[...affordable].sort((a, b) => (a.useCost || 0) - (b.useCost || 0))[0]];
+      }
+      return affordable;
+    }
+    return [];
   }
-  return [...pool].sort((a, b) => (b.power || 0) - (a.power || 0))[0];
+
+  const builtinInRange = (fighter.builtinWeapons || []).filter(
+    (w) => (w.power || 0) > 0 && distance <= (w.range || 1) && (w.useCost || 0) <= fighter.mp
+  );
+  if (builtinInRange.length > 0) {
+    return [[...builtinInRange].sort((a, b) => (b.power || 0) - (a.power || 0))[0]];
+  }
+
+  return [];
+}
+
+function executeSingleAttack(actor, defender, weapon, logs) {
+  const cost = weapon.useCost || 0;
+  actor.mp = Math.max(0, actor.mp - cost);
+  const hitChance = Math.max(25, Math.min(98, 80 + (actor.accBonus || 0) + (weapon.acc || 0)));
+  const roll = Math.random() * 100;
+  const handPrefix = weapon.hand && !String(weapon.hand).startsWith("内蔵") ? `[${weapon.hand}] ` : "";
+
+  if (roll > hitChance) {
+    logs.push(`・${actor.name} の${handPrefix}「${weapon.name}」は外れた！（消費MP:${cost} / 残MP:${actor.mp}）`);
+    return;
+  }
+
+  const dmg = Math.max(1, weapon.power || 10);
+  defender.hp = Math.max(0, defender.hp - dmg);
+  logs.push(
+    `・${actor.name} が${handPrefix}「${weapon.name}」で攻撃！ ${defender.name} に ${dmg} ダメージ（消費MP:${cost} / 残MP:${actor.mp} / 相手耐久:${defender.hp}）`
+  );
+
+  if (defender.hp <= 0) {
+    logs.push(`・${defender.name} の耐久が 0 になった！`);
+  }
 }
 
 function runAutoBattle(build1, build2) {
@@ -214,32 +278,22 @@ function runAutoBattle(build1, build2) {
         }
       }
 
-      const weapon = pickWeaponForTurn(actor, distance);
-      if (!weapon) {
-        logs.push(`・${actor.name} は魔力不足のため待機（魔力:${actor.mp}）`);
+      const attacks = selectAttackQueue(actor, distance);
+      if (attacks.length === 0) {
+        logs.push(`・${actor.name} は攻撃できる武器がないか魔力不足のため待機（魔力:${actor.mp}）`);
         continue;
       }
 
-      const cost = weapon.useCost || 0;
-      actor.mp = Math.max(0, actor.mp - cost);
-      const hitChance = Math.max(25, Math.min(98, 80 + (actor.accBonus || 0) + (weapon.acc || 0)));
-      const roll = Math.random() * 100;
-
-      if (roll > hitChance) {
-        logs.push(`・${actor.name} の「${weapon.name}」は外れた！（消費MP:${cost} / 残MP:${actor.mp}）`);
-        continue;
+      for (const weapon of attacks) {
+        if (defender.hp <= 0) break;
+        if ((weapon.useCost || 0) > actor.mp) {
+          logs.push(`・${actor.name} は魔力不足で「${weapon.name}」の追撃を見送った（残MP:${actor.mp}）`);
+          break;
+        }
+        executeSingleAttack(actor, defender, weapon, logs);
       }
 
-      const dmg = Math.max(1, weapon.power || 10);
-      defender.hp = Math.max(0, defender.hp - dmg);
-      logs.push(
-        `・${actor.name} が「${weapon.name}」で攻撃！ ${defender.name} に ${dmg} ダメージ（消費MP:${cost} / 残MP:${actor.mp} / 相手耐久:${defender.hp}）`
-      );
-
-      if (defender.hp <= 0) {
-        logs.push(`・${defender.name} の耐久が 0 になった！`);
-        break;
-      }
+      if (defender.hp <= 0) break;
     }
 
     if (f1.hp <= 0 || f2.hp <= 0) break;

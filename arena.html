@@ -7,6 +7,26 @@
   <link rel="stylesheet" href="./css/common.css" />
   <link rel="stylesheet" href="./css/arena.css" />
   <style>
+    .fighters-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+      align-items: start;
+    }
+    .sticky-fighter-card {
+      position: sticky;
+      top: 20px;
+      z-index: 2;
+    }
+    .equip-summary {
+      margin: 0 0 12px;
+      font-size: 0.86rem;
+      line-height: 1.55;
+    }
+    .equip-row {
+      margin-bottom: 3px;
+    }
     .battle-banner {
       margin-top: 14px;
       padding: 12px 16px;
@@ -35,6 +55,14 @@
     }
     .log-line:last-child {
       border-bottom: none;
+    }
+    @media (max-width: 820px) {
+      .fighters-grid {
+        grid-template-columns: 1fr;
+      }
+      .sticky-fighter-card {
+        position: static;
+      }
     }
   </style>
 </head>
@@ -84,9 +112,9 @@
         </div>
       </div>
 
-      <div class="form-row" style="margin-top:16px;">
-        <div id="fighter1-card" class="preview-card"></div>
-        <div id="fighter2-card" class="preview-card"></div>
+      <div class="fighters-grid">
+        <div id="fighter1-card" class="preview-card sticky-fighter-card"></div>
+        <div id="fighter2-card" class="preview-card sticky-fighter-card"></div>
       </div>
 
       <div class="action-bar" style="margin-top:16px;">
@@ -99,6 +127,6 @@
     </section>
   </main>
 
-  <script type="module" src="./js/arenaApp.js?v=2"></script>
+  <script type="module" src="./js/arenaApp.js?v=3"></script>
 </body>
 </html>
