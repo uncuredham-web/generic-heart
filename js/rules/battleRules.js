@@ -170,6 +170,31 @@ function createPartState(part, fallbackName, fallbackHp, baseMove = 0, partKey =
   };
 }
 
+export function calcTotalPartsHp(fighter) {
+  const partKeys = ["core", "head", "rightArm", "leftArm", "rightLeg", "leftLeg"];
+  const seenLinked = new Set();
+  let currentTotal = 0;
+  let maxTotal = 0;
+
+  for (const key of partKeys) {
+    const p = fighter.parts?.[key];
+    if (!p) continue;
+    if (p.linkedTo) {
+      if (seenLinked.has(p.linkedTo)) continue;
+      seenLinked.add(p.linkedTo);
+    }
+    currentTotal += Math.max(0, Number(p.hp) || 0);
+    maxTotal += Math.max(0, Number(p.maxHp) || 0);
+  }
+
+  for (const s of fighter.shields || []) {
+    currentTotal += Math.max(0, Number(s.hp) || 0);
+    maxTotal += Math.max(0, Number(s.maxHp) || 0);
+  }
+
+  return { currentTotal, maxTotal };
+}
+
 export function calcFighterStats(build = {}, masterData = {}) {
   const byId = masterData?.byId || {};
   const corePart = byId[build.core] || { name: "クレイコア", hp: 300, maxMp: 100, mpRegen: 15, baseCost: 5 };
@@ -301,6 +326,7 @@ export function calcFighterStats(build = {}, masterData = {}) {
     isDualArm,
     isDualWeapon,
     isDualWield,
+    surrendered: false,
     partsList: activeParts.filter(Boolean),
     equipmentSummary: {
       core: corePart.name || "なし",
@@ -408,6 +434,10 @@ function getAvailableWeapons(fighter, mpLimit = fighter.mp) {
   return usableBuiltin.filter((w) => getWeaponCost(w) <= mpLimit);
 }
 
+function hasAnyAttackOption(fighter) {
+  return getAvailableWeapons(fighter, fighter.mp).length > 0;
+}
+
 function pickWeaponsForAction(fighter, distanceAfterMove, actionType, tactic) {
   if (actionType === "c") return [];
 
@@ -482,7 +512,6 @@ function decideTurnAction(actor, defender, currentDistance) {
   const afterAdvanceDist = Math.max(BATTLE_CONFIG.minDistance, currentDistance - baseMove);
   const afterRetreatDist = currentDistance + baseMove;
   const afterMoveOnlyAdvanceDist = Math.max(BATTLE_CONFIG.minDistance, currentDistance - movePlusOne);
-  const afterMoveOnlyRetreatDist = currentDistance + movePlusOne;
 
   const usableWeapons = getAvailableWeapons(actor, actor.mp);
   const hasAnyInRangeNow = usableWeapons.some((w) => isInRange(w, currentDistance));
@@ -532,7 +561,6 @@ function decideTurnAction(actor, defender, currentDistance) {
   const tryMoveOnly = (preferredDir = "advance") => {
     if (!canMove || movePlusOne <= 0) return null;
     if (preferredDir === "retreat") {
-      // すでに射程内なら逃げ続けて膠着するのを防ぐ
       if (hasAnyInRangeNow) return null;
       return makePlan("c", movePlusOne, "移動に専念（後退）");
     }
@@ -762,9 +790,15 @@ export function runAutoBattle(build1, build2, masterData) {
   let distance = BATTLE_CONFIG.initialDistance;
   const logs = [];
 
+  const initParts1 = calcTotalPartsHp(f1);
+  const initParts2 = calcTotalPartsHp(f2);
+
   logs.push(
-    `[T1] ${f1.name} vs ${f2.name}\n（${f1.name} 核耐久:${f1.hp}/${f1.maxHp}・魔力:${f1.mp}/${f1.maxMp} / ${f2.name} 核耐久:${f2.hp}/${f2.maxHp}・魔力:${f2.mp}/${f2.maxMp} / 初期距離:${distance}）`
+    `[T1] ${f1.name} vs ${f2.name}\n（${f1.name} 核:${f1.hp}/${f1.maxHp}・全部位:${initParts1.currentTotal}/${initParts1.maxTotal}・MP:${f1.mp}/${f1.maxMp}\n / ${f2.name} 核:${f2.hp}/${f2.maxHp}・全部位:${initParts2.currentTotal}/${initParts2.maxTotal}・MP:${f2.mp}/${f2.maxMp} / 初期距離:${distance}）`
   );
+
+  let surrender1 = false;
+  let surrender2 = false;
 
   for (let turn = 1; turn <= BATTLE_CONFIG.maxTurns; turn += 1) {
     if (f1.hp <= 0 || f2.hp <= 0) break;
@@ -777,10 +811,27 @@ export function runAutoBattle(build1, build2, masterData) {
       f.mp = Math.max(0, Math.min(f.maxMp, f.mp + f.mpRegen));
     }
 
+    // 攻撃手段がなくなった機体の降伏チェック
+    const noAttack1 = !hasAnyAttackOption(f1);
+    const noAttack2 = !hasAnyAttackOption(f2);
+    if (noAttack1 || noAttack2) {
+      if (noAttack1) {
+        f1.surrendered = true;
+        surrender1 = true;
+        logs.push(`・【降伏】${f1.name} は攻撃手段がなくなったため降伏した\n（残MP:${f1.mp}）`);
+      }
+      if (noAttack2) {
+        f2.surrendered = true;
+        surrender2 = true;
+        logs.push(`・【降伏】${f2.name} は攻撃手段がなくなったため降伏した\n（残MP:${f2.mp}）`);
+      }
+      break;
+    }
+
     const plan1 = decideTurnAction(f1, f2, distance);
     const plan2 = decideTurnAction(f2, f1, distance);
     logs.push(
-      `・行動選択\n（${f1.name}：${plan1.label} / ${f2.name}：${plan2.label}）`
+      `・行動選択\n（${f1.name}：${plan1.label}\n / ${f2.name}：${plan2.label}）`
     );
 
     const totalMoveDelta = plan1.moveDelta + plan2.moveDelta;
@@ -788,7 +839,7 @@ export function runAutoBattle(build1, build2, masterData) {
       distance = Math.max(BATTLE_CONFIG.minDistance, distance + totalMoveDelta);
     }
     logs.push(
-      `・移動完了\n（現在距離:${distance} / ${f1.name} MP:${f1.mp}・核:${f1.hp} / ${f2.name} MP:${f2.mp}・核:${f2.hp}）`
+      `・移動完了\n（現在距離:${distance}\n / ${f1.name} MP:${f1.mp}・核:${f1.hp}\n / ${f2.name} MP:${f2.mp}・核:${f2.hp}）`
     );
 
     executePlanAttacks(plan1, f2, distance, logs);
@@ -800,36 +851,63 @@ export function runAutoBattle(build1, build2, masterData) {
   }
 
   let winnerName = null;
+  let winnerSide = null; // "fighter1" | "fighter2" | null
   let isDrawByKo = false;
   let decisionReason = "";
 
   if (f1.hp <= 0 && f2.hp <= 0) {
     winnerName = null;
+    winnerSide = null;
     isDrawByKo = true;
     decisionReason = "相打ち（双方が同ターンに核耐久0以下）";
   } else if (f1.hp > 0 && f2.hp <= 0) {
     winnerName = f1.name;
+    winnerSide = "fighter1";
     decisionReason = `${f2.name} の核耐久が0に到達`;
   } else if (f2.hp > 0 && f1.hp <= 0) {
     winnerName = f2.name;
+    winnerSide = "fighter2";
     decisionReason = `${f1.name} の核耐久が0に到達`;
+  } else if (surrender1 && surrender2) {
+    winnerName = null;
+    winnerSide = null;
+    decisionReason = "双方が攻撃手段を失い降伏（引き分け）";
+  } else if (surrender1) {
+    winnerName = f2.name;
+    winnerSide = "fighter2";
+    decisionReason = `${f1.name} が攻撃手段を失い降伏`;
+  } else if (surrender2) {
+    winnerName = f1.name;
+    winnerSide = "fighter1";
+    decisionReason = `${f2.name} が攻撃手段を失い降伏`;
   } else {
-    const ratio1 = f1.maxHp > 0 ? f1.hp / f1.maxHp : 0;
-    const ratio2 = f2.maxHp > 0 ? f2.hp / f2.maxHp : 0;
-    const pct1 = Math.round(ratio1 * 100);
-    const pct2 = Math.round(ratio2 * 100);
+    const total1 = calcTotalPartsHp(f1);
+    const total2 = calcTotalPartsHp(f2);
+    const ratio1 = total1.maxTotal > 0 ? total1.currentTotal / total1.maxTotal : 0;
+    const ratio2 = total2.maxTotal > 0 ? total2.currentTotal / total2.maxTotal : 0;
 
-    if (Math.abs(ratio1 - ratio2) < 0.0001) {
-      if (f1.hp === f2.hp) {
-        winnerName = null;
-        decisionReason = `規定${BATTLE_CONFIG.maxTurns}ターン終了・残耐久同値（${f1.hp} vs ${f2.hp}）`;
+    if (total1.currentTotal !== total2.currentTotal) {
+      if (total1.currentTotal > total2.currentTotal) {
+        winnerName = f1.name;
+        winnerSide = "fighter1";
       } else {
-        winnerName = f1.hp > f2.hp ? f1.name : f2.name;
-        decisionReason = `規定${BATTLE_CONFIG.maxTurns}ターン終了・残耐久差（${f1.name}:${f1.hp} vs ${f2.name}:${f2.hp}）`;
+        winnerName = f2.name;
+        winnerSide = "fighter2";
       }
+      decisionReason = `規定${BATTLE_CONFIG.maxTurns}ターン終了・全部位耐久合計（${f1.name}:${total1.currentTotal}/${total1.maxTotal} vs ${f2.name}:${total2.currentTotal}/${total2.maxTotal}）`;
+    } else if (Math.abs(ratio1 - ratio2) >= 0.0001) {
+      if (ratio1 > ratio2) {
+        winnerName = f1.name;
+        winnerSide = "fighter1";
+      } else {
+        winnerName = f2.name;
+        winnerSide = "fighter2";
+      }
+      decisionReason = `規定${BATTLE_CONFIG.maxTurns}ターン終了・全部位耐久割合（${f1.name}:${Math.round(ratio1 * 100)}% vs ${f2.name}:${Math.round(ratio2 * 100)}%）`;
     } else {
-      winnerName = ratio1 > ratio2 ? f1.name : f2.name;
-      decisionReason = `規定${BATTLE_CONFIG.maxTurns}ターン終了・残耐久割合（${f1.name}:${pct1}%[${f1.hp}/${f1.maxHp}] vs ${f2.name}:${pct2}%[${f2.hp}/${f2.maxHp}]）`;
+      winnerName = null;
+      winnerSide = null;
+      decisionReason = `規定${BATTLE_CONFIG.maxTurns}ターン終了・全部位耐久同値（${total1.currentTotal} vs ${total2.currentTotal}）`;
     }
   }
 
@@ -841,5 +919,5 @@ export function runAutoBattle(build1, build2, masterData) {
     logs.push(`決着：引き分け\n（${decisionReason}）`);
   }
 
-  return { winnerName, decisionReason, logs };
+  return { winnerName, winnerSide, decisionReason, logs };
 }

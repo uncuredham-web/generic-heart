@@ -99,7 +99,8 @@ const state = {
   masterOk: false,
   builds: [],
   fighter1Id: "",
-  fighter2Id: ""
+  fighter2Id: "",
+  lastWinnerSide: null
 };
 
 const els = {
@@ -131,10 +132,29 @@ function setArenaControlsLocked(locked) {
   if (els.randomBattleBtn) els.randomBattleBtn.disabled = locked;
 }
 
+function applyFighterCardWinnerStyle(cardEl, isWinner) {
+  const host = cardEl?.closest(".card, .fighter-card, .column-card") || cardEl;
+  if (!host) return;
+  host.classList.toggle("is-winner-card", Boolean(isWinner));
+  if (isWinner) {
+    host.style.borderColor = "#34d399";
+    host.style.boxShadow = "0 0 0 2px rgba(52, 211, 153, 0.35), 0 10px 24px rgba(16, 185, 129, 0.14)";
+    host.style.backgroundColor = "rgba(16, 185, 129, 0.06)";
+  } else {
+    host.style.borderColor = "";
+    host.style.boxShadow = "";
+    host.style.backgroundColor = "";
+  }
+}
+
 function clearBattleView() {
+  state.lastWinnerSide = null;
+  applyFighterCardWinnerStyle(els.fighter1Card, false);
+  applyFighterCardWinnerStyle(els.fighter2Card, false);
+
   if (els.battleBanner) {
     els.battleBanner.style.display = "none";
-    els.battleBanner.textContent = "";
+    els.battleBanner.innerHTML = "";
   }
   if (els.battleLog) {
     els.battleLog.style.display = "none";
@@ -183,14 +203,16 @@ function getAllBuilds() {
   return merged;
 }
 
-function renderFighterCard(targetEl, build) {
+function renderFighterCard(targetEl, build, isWinner = false) {
   if (!targetEl) return;
   if (!state.masterOk || !state.masterData) {
     targetEl.innerHTML = "";
+    applyFighterCardWinnerStyle(targetEl, false);
     return;
   }
   if (!build) {
     targetEl.innerHTML = `<p class="muted">機体が選択されていません。</p>`;
+    applyFighterCardWinnerStyle(targetEl, false);
     return;
   }
   const normalizedBuild = {
@@ -200,10 +222,16 @@ function renderFighterCard(targetEl, build) {
   const st = calcFighterStats(normalizedBuild, state.masterData);
   const eq = st.equipmentSummary;
   const mpRegenLabel = st.mpRegen >= 0 ? `+${st.mpRegen}` : `${st.mpRegen}`;
+  const winnerBadge = isWinner
+    ? `<span class="tag" style="background:#059669;color:#ffffff;border-color:#10b981;">勝利</span>`
+    : "";
 
   targetEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-      <h3 style="margin:0;font-size:1.1rem;">${escapeHtml(st.name)}</h3>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <h3 style="margin:0;font-size:1.1rem;">${escapeHtml(st.name)}</h3>
+        ${winnerBadge}
+      </div>
       <span class="tag">${escapeHtml(st.tactic)}</span>
     </div>
     <div class="equip-summary muted">
@@ -221,6 +249,8 @@ function renderFighterCard(targetEl, build) {
       <div class="stat-box"><div class="stat-label">移動力（回復${mpRegenLabel}）</div><div class="stat-value">${st.move}</div></div>
     </div>
   `;
+
+  applyFighterCardWinnerStyle(targetEl, isWinner);
 }
 
 function formatLogLineHtml(line) {
@@ -241,25 +271,33 @@ function formatLogLineHtml(line) {
     ? `<span class="log-sub" style="display:block;margin-top:2px;white-space:pre-line;">${escapeHtml(subText)}</span>`
     : "";
 
-  return `<div class="log-line${extraClass}" style="white-space:normal;line-height:1.55;">${escapeHtml(mainText)}${subHtml}</div>`;
+  return `<div class="log-line${extraClass}" style="white:normal;line-height:1.55;">${escapeHtml(mainText)}${subHtml}</div>`;
 }
 
 function renderBattleResult(result) {
   if (!result) return;
 
+  state.lastWinnerSide = result.winnerSide || null;
+
+  const f1 = state.builds.find((b) => b.id === state.fighter1Id) || state.builds[0];
+  const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
+  renderFighterCard(els.fighter1Card, f1, state.lastWinnerSide === "fighter1");
+  renderFighterCard(els.fighter2Card, f2, state.lastWinnerSide === "fighter2");
+
   if (els.battleBanner) {
     els.battleBanner.style.display = "block";
-    if (result.winnerName) {
-      els.battleBanner.textContent = result.decisionReason
-        ? `${result.winnerName} の勝利（${result.decisionReason}）`
-        : `${result.winnerName} の勝利`;
-    } else {
-      const hasKoDraw = Array.isArray(result.logs) &&
-        result.logs.some((l) => String(l).includes("相打ち"));
-      els.battleBanner.textContent = hasKoDraw
-        ? "相打ち（引き分け）"
-        : (result.decisionReason ? `引き分け（${result.decisionReason}）` : "引き分け");
-    }
+    const hasKoDraw = Array.isArray(result.logs) &&
+      result.logs.some((l) => String(l).includes("相打ち"));
+
+    const titleText = result.winnerName
+      ? `${result.winnerName} の勝利`
+      : (hasKoDraw ? "相打ち（引き分け）" : "引き分け");
+
+    const reasonText = result.decisionReason ? escapeHtml(result.decisionReason) : "";
+
+    els.battleBanner.innerHTML = reasonText
+      ? `<div style="font-size:1.05rem;font-weight:700;">${escapeHtml(titleText)}</div><div style="font-size:0.88rem;opacity:0.92;margin-top:4px;line-height:1.45;">${reasonText}</div>`
+      : `<div style="font-size:1.05rem;font-weight:700;">${escapeHtml(titleText)}</div>`;
   }
 
   if (els.battleLog) {
@@ -273,8 +311,8 @@ function syncBuildSelectors() {
   if (!state.masterOk || !state.masterData) {
     if (els.fighter1Select) els.fighter1Select.innerHTML = "";
     if (els.fighter2Select) els.fighter2Select.innerHTML = "";
-    renderFighterCard(els.fighter1Card, null);
-    renderFighterCard(els.fighter2Card, null);
+    renderFighterCard(els.fighter1Card, null, false);
+    renderFighterCard(els.fighter2Card, null, false);
     clearBattleView();
     setArenaControlsLocked(true);
     return;
@@ -304,8 +342,8 @@ function syncBuildSelectors() {
 
   const f1 = state.builds.find((b) => b.id === state.fighter1Id) || state.builds[0];
   const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
-  renderFighterCard(els.fighter1Card, f1);
-  renderFighterCard(els.fighter2Card, f2);
+  renderFighterCard(els.fighter1Card, f1, state.lastWinnerSide === "fighter1");
+  renderFighterCard(els.fighter2Card, f2, state.lastWinnerSide === "fighter2");
 }
 
 function handleStartBattle() {
@@ -326,6 +364,7 @@ function handleRandomBattle() {
   }
   state.fighter1Id = state.builds[idx1].id;
   state.fighter2Id = state.builds[idx2].id;
+  state.lastWinnerSide = null;
   syncBuildSelectors();
   handleStartBattle();
 }
@@ -341,15 +380,21 @@ function bindEvents() {
   els.fighter1Select?.addEventListener("change", (e) => {
     if (!state.masterOk) return;
     state.fighter1Id = e.target.value;
+    state.lastWinnerSide = null;
     const f1 = state.builds.find((b) => b.id === state.fighter1Id);
-    renderFighterCard(els.fighter1Card, f1);
+    const f2 = state.builds.find((b) => b.id === state.fighter2Id);
+    renderFighterCard(els.fighter1Card, f1, false);
+    renderFighterCard(els.fighter2Card, f2, false);
   });
 
   els.fighter2Select?.addEventListener("change", (e) => {
     if (!state.masterOk) return;
     state.fighter2Id = e.target.value;
+    state.lastWinnerSide = null;
+    const f1 = state.builds.find((b) => b.id === state.fighter1Id);
     const f2 = state.builds.find((b) => b.id === state.fighter2Id);
-    renderFighterCard(els.fighter2Card, f2);
+    renderFighterCard(els.fighter1Card, f1, false);
+    renderFighterCard(els.fighter2Card, f2, false);
   });
 
   els.startBattleBtn?.addEventListener("click", handleStartBattle);
