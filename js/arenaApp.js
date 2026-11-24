@@ -1,5 +1,4 @@
 import { loadGolemMasterData } from "./data/golemData.js";
-import { AI_POLICIES, calculateGolemBuild, simulateBattle } from "./rules/battleRules.js";
 import { loadSavedBuilds, showToast } from "./ui/storage.js";
 
 const state = {
@@ -7,8 +6,7 @@ const state = {
   masterOk: false,
   fighters: [],
   selectedA: null,
-  selectedB: null,
-  lastResult: null
+  selectedB: null
 };
 
 const els = {
@@ -24,18 +22,6 @@ const els = {
   battleSummary: document.getElementById("battle-summary"),
   battleLog: document.getElementById("battle-log")
 };
-
-function buildFighterPool(masterData) {
-  const presets = (masterData.presets || []).map((p) => ({
-    ...calculateGolemBuild(p, masterData),
-    origin: "プリセット"
-  }));
-  const customs = loadSavedBuilds().map((c) => ({
-    ...calculateGolemBuild(c, masterData),
-    origin: "カスタム保存"
-  }));
-  return [...customs, ...presets];
-}
 
 function renderStatus(statusInfo) {
   els.dataStatus.textContent = statusInfo.message;
@@ -63,85 +49,65 @@ function clearBlankArena(message = "") {
   els.randomMatchBtn.disabled = true;
 }
 
-function renderFighterCard(container, fighter, currentHp = null) {
+function summarizeFighter(build, byId) {
+  const core = byId[build.core];
+  const rLeg = byId[build.rightLeg];
+  const lLeg = byId[build.leftLeg];
+  const isDualLeg = rLeg?.slot === "両脚占有";
+  const move = rLeg ? (isDualLeg ? (rLeg.move || 0) : (rLeg.move || 0) + (lLeg?.move || 0)) : 0;
+  return {
+    name: build.name || "名称未設定ゴーレム",
+    hp: core?.hp || 0,
+    maxMp: core?.maxMp || 0,
+    move,
+    tactic: build.tactic || "バランスよく戦え"
+  };
+}
+
+function renderFighterCard(container, fighter) {
   if (!fighter) {
     container.innerHTML = "";
     return;
   }
-  const hp = currentHp !== null ? currentHp : fighter.stats.hp;
-  const pct = Math.max(0, Math.min(100, Math.round((hp / fighter.stats.hp) * 100)));
-  const isLow = pct <= 30;
-
+  const spec = summarizeFighter(fighter, state.masterData.byId);
   container.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-      <strong>${escapeHtml(fighter.name)}</strong>
-      <span class="tag">${fighter.origin}</span>
-    </div>
-    <div class="muted" style="margin-top:4px;">
-      ${AI_POLICIES[fighter.aiPolicy].label} ／ コスト ${fighter.totalCost}
-    </div>
-    <div class="hp-bar-track">
-      <div class="hp-bar-fill ${isLow ? "is-low" : ""}" style="width:${pct}%;"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
-      <span>HP: ${hp} / ${fighter.stats.hp}</span>
-      <span>${pct}%</span>
-    </div>
+    <div><strong>${escapeHtml(spec.name)}</strong></div>
+    <div class="muted" style="margin-top:4px;">さくせん: ${escapeHtml(spec.tactic)}</div>
     <div class="stats-grid">
-      <div class="stat-box"><div class="stat-label">攻撃力</div><div class="stat-value">${fighter.stats.atk}</div></div>
-      <div class="stat-box"><div class="stat-label">防御力</div><div class="stat-value">${fighter.stats.def}</div></div>
-      <div class="stat-box"><div class="stat-label">素早さ</div><div class="stat-value">${fighter.stats.spd}</div></div>
+      <div class="stat-box"><div class="stat-label">胴体耐久</div><div class="stat-value">${spec.hp}</div></div>
+      <div class="stat-box"><div class="stat-label">最大魔力</div><div class="stat-value">${spec.maxMp}</div></div>
+      <div class="stat-box"><div class="stat-label">移動力</div><div class="stat-value">${spec.move}</div></div>
     </div>
   `;
 }
 
 function renderSelectOptions() {
   const optionsHtml = state.fighters
-    .map((f, idx) => `<option value="${idx}">[${f.origin}] ${escapeHtml(f.name)}</option>`)
+    .map((f, idx) => `<option value="${idx}">${escapeHtml(f.name || "名称未設定ゴーレム")}</option>`)
     .join("");
-
   els.selectA.innerHTML = optionsHtml;
   els.selectB.innerHTML = optionsHtml;
-
-  const idxA = Math.max(0, state.fighters.findIndex((f) => f.id === state.selectedA?.id));
-  const idxB = Math.max(0, state.fighters.findIndex((f) => f.id === state.selectedB?.id));
-
-  els.selectA.value = String(idxA);
-  els.selectB.value = String(idxB === idxA && state.fighters.length > 1 ? 1 : idxB);
-
+  els.selectA.value = "0";
+  els.selectB.value = state.fighters.length > 1 ? "1" : "0";
   state.selectedA = state.fighters[Number(els.selectA.value)] || null;
   state.selectedB = state.fighters[Number(els.selectB.value)] || null;
-
   renderFighterCard(els.cardA, state.selectedA);
   renderFighterCard(els.cardB, state.selectedB);
   els.startBattleBtn.disabled = !(state.selectedA && state.selectedB);
   els.randomMatchBtn.disabled = state.fighters.length < 2;
 }
 
-function renderBattleResult(result) {
-  if (!result) return;
-
-  renderFighterCard(els.cardA, state.selectedA, result.finalHp.a);
-  renderFighterCard(els.cardB, state.selectedB, result.finalHp.b);
-
-  els.battleSummary.innerHTML = `
-    <div class="log-winner">
-      勝敗結果：${result.winnerSide === "DRAW" ? "引き分け" : `${result.winnerSide}「${escapeHtml(result.winnerName)}」の勝利！`}
-    </div>
+function runBattle() {
+  if (!state.masterOk || !state.selectedA || !state.selectedB) return;
+  const a = summarizeFighter(state.selectedA, state.masterData.byId);
+  const b = summarizeFighter(state.selectedB, state.masterData.byId);
+  const scoreA = a.hp + a.maxMp;
+  const scoreB = b.hp + b.maxMp;
+  const winnerText = scoreA === scoreB ? "引き分け" : scoreA > scoreB ? `${a.name} の勝利` : `${b.name} の勝利`;
+  els.battleSummary.innerHTML = `<div class="log-winner">${escapeHtml(winnerText)}</div>`;
+  els.battleLog.innerHTML = `
+    <div class="log-entry"><span class="log-turn">[T1]</span>${escapeHtml(a.name)} (耐久:${a.hp} / 魔力:${a.maxMp}) vs ${escapeHtml(b.name)} (耐久:${b.hp} / 魔力:${b.maxMp})</div>
   `;
-
-  els.battleLog.innerHTML = result.logs
-    .map((entry) => {
-      const cls =
-        entry.kind === "crit" ? "log-crit" : entry.kind === "skill" ? "log-skill" : "";
-      return `
-        <div class="log-entry ${cls}">
-          <span class="log-turn">[T${entry.turn}]</span>
-          <span>${escapeHtml(entry.text)}</span>
-        </div>
-      `;
-    })
-    .join("");
 }
 
 function escapeHtml(str) {
@@ -152,26 +118,19 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
-function runBattle() {
-  if (!state.masterOk || !state.selectedA || !state.selectedB) return;
-  const result = simulateBattle(state.selectedA, state.selectedB);
-  state.lastResult = result;
-  renderBattleResult(result);
-}
-
 async function applyMasterLoadResult(res) {
   state.masterData = res.data;
   state.masterOk = Boolean(res.ok);
   renderStatus(res);
-
   if (!state.masterOk) {
     clearBlankArena(res.message);
     return;
   }
-
-  state.fighters = buildFighterPool(state.masterData);
-  state.selectedA = state.fighters[0] || null;
-  state.selectedB = state.fighters[1] || state.fighters[0] || null;
+  state.fighters = loadSavedBuilds();
+  if (state.fighters.length === 0) {
+    clearBlankArena("保存済み機体がありません。ビルダーで機体を作成・保存してください。");
+    return;
+  }
   renderSelectOptions();
 }
 
@@ -180,14 +139,11 @@ function bindEvents() {
     state.selectedA = state.fighters[Number(els.selectA.value)] || null;
     renderFighterCard(els.cardA, state.selectedA);
   });
-
   els.selectB.addEventListener("change", () => {
     state.selectedB = state.fighters[Number(els.selectB.value)] || null;
     renderFighterCard(els.cardB, state.selectedB);
   });
-
   els.startBattleBtn.addEventListener("click", runBattle);
-
   els.randomMatchBtn.addEventListener("click", () => {
     if (!state.masterOk || state.fighters.length < 2) return;
     const idxA = Math.floor(Math.random() * state.fighters.length);
@@ -199,13 +155,11 @@ function bindEvents() {
     state.selectedB = state.fighters[idxB];
     runBattle();
   });
-
   els.reloadDataBtn.addEventListener("click", async () => {
     const res = await loadGolemMasterData();
     await applyMasterLoadResult(res);
     showToast(res.message);
   });
-
   window.addEventListener("offline", async () => {
     const res = await loadGolemMasterData();
     await applyMasterLoadResult(res);

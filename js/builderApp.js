@@ -1,11 +1,12 @@
-import { loadGolemMasterData, STAT_LABELS } from "./data/golemData.js";
-import { AI_POLICIES, SKILLS, calculateGolemBuild } from "./rules/battleRules.js";
-import {
-  deleteCustomBuild,
-  loadSavedBuilds,
-  saveCustomBuild,
-  showToast
-} from "./ui/storage.js";
+import { loadGolemMasterData } from "./data/golemData.js";
+import { loadSavedBuilds, saveCustomBuild, deleteCustomBuild, showToast } from "./ui/storage.js";
+
+const TACTICS = [
+  "ガンガン近づけ",
+  "距離をとって戦え",
+  "バランスよく戦え",
+  "省エネ・粘り強く戦え"
+];
 
 const state = {
   masterData: null,
@@ -13,9 +14,15 @@ const state = {
   draft: {
     id: null,
     name: "",
-    coreId: "",
-    parts: { arm: "", leg: "", chip: "" },
-    aiPolicy: "balanced"
+    core: "",
+    head: "",
+    rightArm: "",
+    leftArm: "",
+    rightWeapon: "",
+    leftWeapon: "",
+    rightLeg: "",
+    leftLeg: "",
+    tactic: TACTICS[0]
   }
 };
 
@@ -24,28 +31,19 @@ const els = {
   masterError: document.getElementById("master-error"),
   reloadDataBtn: document.getElementById("reload-data-btn"),
   golemName: document.getElementById("golem-name"),
-  aiPolicy: document.getElementById("ai-policy"),
+  tacticSelect: document.getElementById("tactic-select"),
   presetSelect: document.getElementById("preset-select"),
   applyPresetBtn: document.getElementById("apply-preset-btn"),
-  coreList: document.getElementById("core-list"),
+  bodyHeadList: document.getElementById("body-head-list"),
   armList: document.getElementById("arm-list"),
   legList: document.getElementById("leg-list"),
-  chipList: document.getElementById("chip-list"),
-  costSummary: document.getElementById("cost-summary"),
+  weaponList: document.getElementById("weapon-list"),
   previewCard: document.getElementById("preview-card"),
   saveBuildBtn: document.getElementById("save-build-btn"),
   saveAsNewBtn: document.getElementById("save-as-new-btn"),
   exportJsonBtn: document.getElementById("export-json-btn"),
   savedList: document.getElementById("saved-list")
 };
-
-function formatMods(mods = {}) {
-  const entries = Object.entries(mods).filter(([, v]) => v !== 0);
-  if (entries.length === 0) return "補正なし";
-  return entries
-    .map(([k, v]) => `${STAT_LABELS[k] || k} ${v > 0 ? `+${v}` : v}`)
-    .join(" / ");
-}
 
 function renderStatus(statusInfo) {
   els.dataStatus.textContent = statusInfo.message;
@@ -60,12 +58,11 @@ function renderStatus(statusInfo) {
 }
 
 function clearBlankBuilder() {
-  els.coreList.innerHTML = "";
+  els.bodyHeadList.innerHTML = "";
   els.armList.innerHTML = "";
   els.legList.innerHTML = "";
-  els.chipList.innerHTML = "";
+  els.weaponList.innerHTML = "";
   els.presetSelect.innerHTML = "";
-  els.costSummary.innerHTML = "";
   els.previewCard.innerHTML = "";
   els.savedList.innerHTML = "";
   els.applyPresetBtn.disabled = true;
@@ -73,65 +70,30 @@ function clearBlankBuilder() {
   els.saveAsNewBtn.disabled = true;
 }
 
-function renderSelectors() {
-  els.aiPolicy.innerHTML = Object.values(AI_POLICIES)
-    .map((p) => `<option value="${p.id}">${p.label} — ${p.description}</option>`)
-    .join("");
-  els.aiPolicy.value = state.draft.aiPolicy;
-
-  const presets = state.masterData.presets || [];
-  els.presetSelect.innerHTML = presets
-    .map((pr) => `<option value="${pr.id}">${pr.name}</option>`)
-    .join("");
-  els.applyPresetBtn.disabled = presets.length === 0;
+function formatPartSpec(p) {
+  const bits = [];
+  if (p.hp > 0) bits.push(`耐久${p.hp}`);
+  if (p.maxMp > 0) bits.push(`最大魔力${p.maxMp}/回復+${p.mpRegen}`);
+  if (p.power > 0) bits.push(`威力${p.power}/射程${p.range}`);
+  if (p.useCost > 0) bits.push(`消費${p.useCost}`);
+  if (p.baseCost > 0) bits.push(`基礎消費-${p.baseCost}`);
+  if (p.move > 0) bits.push(`移動${p.move}`);
+  if (p.acc !== 0) bits.push(`命中${p.acc > 0 ? "+" : ""}${p.acc}%`);
+  return bits.join(" / ");
 }
 
-function renderCores() {
-  els.coreList.innerHTML = state.masterData.cores
-    .map((core) => {
-      const selected = core.id === state.draft.coreId;
+function renderList(container, items, selectedId, onPick) {
+  container.innerHTML = items
+    .map((p) => {
+      const sel = p.id === selectedId ? "is-selected" : "";
       return `
-        <div class="part-card ${selected ? "is-selected" : ""}" data-core-id="${core.id}">
+        <div class="part-card ${sel}" data-part-id="${p.id}">
           <div class="part-card-header">
-            <span>${core.name}</span>
-            <span class="part-cost">コスト ${core.cost}</span>
+            <span>${escapeHtml(p.name)}</span>
+            <span class="part-cost">${escapeHtml(p.cat)}</span>
           </div>
-          <div class="tag">${core.role}</div>
-          <p class="part-desc">${core.description}</p>
-          <div class="part-mods">
-            HP:${core.baseStats.hp} / 攻:${core.baseStats.atk} / 防:${core.baseStats.def} / 速:${core.baseStats.spd}
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-
-  els.coreList.querySelectorAll("[data-core-id]").forEach((card) => {
-    card.addEventListener("click", () => {
-      state.draft.coreId = card.dataset.coreId;
-      renderAll();
-    });
-  });
-}
-
-function renderPartSlot(slot, container) {
-  const list = state.masterData.parts[slot] || [];
-  const selectedId = state.draft.parts[slot];
-
-  container.innerHTML = list
-    .map((part) => {
-      const selected = part.id === selectedId;
-      const skillText = part.skillId && SKILLS[part.skillId]
-        ? ` / スキル: ${SKILLS[part.skillId].name}`
-        : "";
-      return `
-        <div class="part-card ${selected ? "is-selected" : ""}" data-slot="${slot}" data-part-id="${part.id}">
-          <div class="part-card-header">
-            <span>${part.name}</span>
-            <span class="part-cost">コスト ${part.cost}</span>
-          </div>
-          <p class="part-desc">${part.description}</p>
-          <div class="part-mods">${formatMods(part.mods)}${skillText}</div>
+          <p class="part-desc">${escapeHtml(p.note || "")}</p>
+          <div class="part-mods">${escapeHtml(formatPartSpec(p))}</div>
         </div>
       `;
     })
@@ -139,81 +101,83 @@ function renderPartSlot(slot, container) {
 
   container.querySelectorAll("[data-part-id]").forEach((card) => {
     card.addEventListener("click", () => {
-      state.draft.parts[card.dataset.slot] = card.dataset.partId;
+      onPick(card.dataset.partId);
       renderAll();
     });
   });
 }
 
 function renderPreview() {
-  const built = calculateGolemBuild(state.draft, state.masterData);
+  const { byId } = state.masterData;
+  const core = byId[state.draft.core];
+  const head = byId[state.draft.head];
+  const rArm = byId[state.draft.rightArm];
+  const lArm = byId[state.draft.leftArm];
+  const rLeg = byId[state.draft.rightLeg];
+  const lLeg = byId[state.draft.leftLeg];
+  const rWeap = byId[state.draft.rightWeapon] || null;
+  const lWeap = byId[state.draft.leftWeapon] || null;
+  if (!core || !head || !rArm || !lArm || !rLeg || !lLeg) return;
 
-  els.costSummary.innerHTML = `
-    <span>合計コスト</span>
-    <strong class="cost-value ${built.isOverCost ? "is-over" : ""}">
-      ${built.totalCost} / ${built.costLimit}${built.isOverCost ? "（上限超過！）" : ""}
-    </strong>
-  `;
+  const isDualLeg = rLeg.slot === "両脚占有";
+  const active = [core, head, rArm, lArm, rLeg];
+  if (!isDualLeg) active.push(lLeg);
+  if (rWeap) active.push(rWeap);
+  if (lWeap && (!rWeap || lWeap.id !== rWeap.id)) active.push(lWeap);
 
-  const skillBadges = built.skills.length
-    ? built.skills.map((s) => `<span class="tag">${s.name}</span>`).join(" ")
-    : `<span class="muted">なし（通常攻撃のみ）</span>`;
+  const baseCost = active.reduce((s, p) => s + (p.baseCost || 0), 0);
+  const netMp = (core.mpRegen || 0) - baseCost;
+  const move = isDualLeg ? (rLeg.move || 0) : (rLeg.move || 0) + (lLeg.move || 0);
 
   els.previewCard.innerHTML = `
     <div class="preview-header">
-      <h3 class="preview-name">${escapeHtml(built.name)}</h3>
-      <span class="tag">${AI_POLICIES[built.aiPolicy].label}</span>
+      <h3 class="preview-name">${escapeHtml(state.draft.name || "名称未設定ゴーレム")}</h3>
+      <span class="tag">${escapeHtml(state.draft.tactic)}</span>
     </div>
-    <p class="muted" style="margin:0 0 8px;">
-      コア: <strong>${built.core.name}</strong> ／
-      パーツ: ${built.parts.map((p) => p.name).join("、")}
-    </p>
-    <div style="margin-bottom:10px;">習得スキル: ${skillBadges}</div>
+    <p class="muted" style="margin:0 0 6px;">胴体: ${escapeHtml(core.name)} / 頭部: ${escapeHtml(head.name)}</p>
+    <p class="muted" style="margin:0 0 6px;">右腕: ${escapeHtml(rArm.name)} / 左腕: ${escapeHtml(lArm.name)}</p>
+    <p class="muted" style="margin:0 0 6px;">脚部: ${escapeHtml(isDualLeg ? rLeg.name : `${rLeg.name} + ${lLeg.name}`)}</p>
+    <p class="muted" style="margin:0 0 10px;">右手: ${escapeHtml(rWeap ? rWeap.name : "なし")} / 左手: ${escapeHtml(lWeap ? lWeap.name : "なし")}</p>
     <div class="stats-grid">
-      <div class="stat-box"><div class="stat-label">HP</div><div class="stat-value">${built.stats.hp}</div></div>
-      <div class="stat-box"><div class="stat-label">攻撃力</div><div class="stat-value">${built.stats.atk}</div></div>
-      <div class="stat-box"><div class="stat-label">防御力</div><div class="stat-value">${built.stats.def}</div></div>
-      <div class="stat-box"><div class="stat-label">素早さ</div><div class="stat-value">${built.stats.spd}</div></div>
+      <div class="stat-box"><div class="stat-label">胴体耐久</div><div class="stat-value">${core.hp}</div></div>
+      <div class="stat-box"><div class="stat-label">最大魔力</div><div class="stat-value">${core.maxMp}</div></div>
+      <div class="stat-box"><div class="stat-label">毎ターン魔力収支</div><div class="stat-value">${netMp >= 0 ? `+${netMp}` : netMp}</div></div>
+      <div class="stat-box"><div class="stat-label">移動力</div><div class="stat-value">${move}</div></div>
     </div>
   `;
-
-  els.saveBuildBtn.disabled = built.isOverCost;
-  els.saveAsNewBtn.disabled = built.isOverCost;
+  els.saveBuildBtn.disabled = false;
+  els.saveAsNewBtn.disabled = false;
 }
 
 function renderSavedBuilds() {
   const saved = loadSavedBuilds();
   if (saved.length === 0) {
-    els.savedList.innerHTML = `<p class="muted">保存済みカスタムゴーレムはまだありません。</p>`;
+    els.savedList.innerHTML = `<p class="muted">保存済み機体はありません。</p>`;
     return;
   }
-
   els.savedList.innerHTML = saved
-    .map((b) => {
-      const built = calculateGolemBuild(b, state.masterData);
-      return `
-        <div class="saved-item">
-          <div>
-            <div class="saved-item-title">${escapeHtml(built.name)} <span class="muted">(コスト ${built.totalCost})</span></div>
-            <div class="muted">HP:${built.stats.hp} / 攻:${built.stats.atk} / 防:${built.stats.def} / 速:${built.stats.spd}</div>
-          </div>
-          <div class="saved-item-actions">
-            <button type="button" class="btn btn-secondary btn-sm" data-load-id="${b.id}">編集読込</button>
-            <button type="button" class="btn btn-danger btn-sm" data-del-id="${b.id}">削除</button>
-          </div>
+    .map((b) => `
+      <div class="saved-item">
+        <div>
+          <div class="saved-item-title">${escapeHtml(b.name || "名称未設定ゴーレム")}</div>
+          <div class="muted">${escapeHtml(b.tactic || "")}</div>
         </div>
-      `;
-    })
+        <div class="saved-item-actions">
+          <button type="button" class="btn btn-secondary btn-sm" data-load-id="${b.id}">読込</button>
+          <button type="button" class="btn btn-danger btn-sm" data-del-id="${b.id}">削除</button>
+        </div>
+      </div>
+    `)
     .join("");
 
   els.savedList.querySelectorAll("[data-load-id]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const target = loadSavedBuilds().find((x) => x.id === btn.dataset.loadId);
       if (!target) return;
-      state.draft = JSON.parse(JSON.stringify(target));
-      els.golemName.value = state.draft.name;
+      state.draft = { ...target };
+      els.golemName.value = state.draft.name || "";
       renderAll();
-      showToast(`「${state.draft.name}」を編集欄に読み込みました`);
+      showToast("読み込みました");
     });
   });
 
@@ -222,7 +186,7 @@ function renderSavedBuilds() {
       deleteCustomBuild(btn.dataset.delId);
       if (state.draft.id === btn.dataset.delId) state.draft.id = null;
       renderSavedBuilds();
-      showToast("保存データを削除しました");
+      showToast("削除しました");
     });
   });
 }
@@ -240,19 +204,41 @@ function renderAll() {
     clearBlankBuilder();
     return;
   }
-  if (!state.draft.coreId && state.masterData.cores[0]) {
-    state.draft.coreId = state.masterData.cores[0].id;
-  }
-  for (const slot of ["arm", "leg", "chip"]) {
-    if (!state.draft.parts[slot] && state.masterData.parts[slot]?.[0]) {
-      state.draft.parts[slot] = state.masterData.parts[slot][0].id;
-    }
-  }
-  renderSelectors();
-  renderCores();
-  renderPartSlot("arm", els.armList);
-  renderPartSlot("leg", els.legList);
-  renderPartSlot("chip", els.chipList);
+
+  const parts = state.masterData.parts;
+  const cores = parts.filter((p) => p.cat === "胴体");
+  const heads = parts.filter((p) => p.cat === "頭部");
+  const arms = parts.filter((p) => p.cat === "腕部");
+  const legs = parts.filter((p) => p.cat === "脚部");
+  const equips = parts.filter((p) => ["物理武器", "魔力武器", "シールド"].includes(p.cat));
+
+  if (!state.draft.core && cores[0]) state.draft.core = cores[0].id;
+  if (!state.draft.head && heads[0]) state.draft.head = heads[0].id;
+  if (!state.draft.rightArm && arms[0]) state.draft.rightArm = arms[0].id;
+  if (!state.draft.leftArm && arms[0]) state.draft.leftArm = arms[0].id;
+  if (!state.draft.rightLeg && legs[0]) state.draft.rightLeg = legs[0].id;
+  if (!state.draft.leftLeg && legs[0]) state.draft.leftLeg = legs[0].id;
+
+  els.tacticSelect.innerHTML = TACTICS.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
+  els.tacticSelect.value = state.draft.tactic || TACTICS[0];
+
+  renderList(els.bodyHeadList, [...cores, ...heads], state.draft.core, (id) => {
+    const picked = state.masterData.byId[id];
+    if (picked?.cat === "胴体") state.draft.core = id;
+    if (picked?.cat === "頭部") state.draft.head = id;
+  });
+  renderList(els.armList, arms, state.draft.rightArm, (id) => {
+    state.draft.rightArm = id;
+  });
+  renderList(els.legList, legs, state.draft.rightLeg, (id) => {
+    state.draft.rightLeg = id;
+    const leg = state.masterData.byId[id];
+    if (leg?.slot === "両脚占有") state.draft.leftLeg = id;
+  });
+  renderList(els.weaponList, equips, state.draft.rightWeapon, (id) => {
+    state.draft.rightWeapon = state.draft.rightWeapon === id ? "" : id;
+  });
+
   renderPreview();
   renderSavedBuilds();
 }
@@ -270,32 +256,14 @@ function bindEvents() {
     if (state.masterOk) renderPreview();
   });
 
-  els.aiPolicy.addEventListener("change", (e) => {
-    state.draft.aiPolicy = e.target.value;
+  els.tacticSelect.addEventListener("change", (e) => {
+    state.draft.tactic = e.target.value;
     if (state.masterOk) renderPreview();
-  });
-
-  els.applyPresetBtn.addEventListener("click", () => {
-    if (!state.masterOk) return;
-    const preset = (state.masterData.presets || []).find((p) => p.id === els.presetSelect.value);
-    if (!preset) return;
-    state.draft = {
-      id: null,
-      name: `${preset.name}（改）`,
-      coreId: preset.coreId,
-      parts: { ...preset.parts },
-      aiPolicy: preset.aiPolicy || "balanced"
-    };
-    els.golemName.value = state.draft.name;
-    renderAll();
-    showToast("プリセットを反映しました");
   });
 
   els.saveBuildBtn.addEventListener("click", () => {
     if (!state.masterOk) return;
-    const built = calculateGolemBuild(state.draft, state.masterData);
-    if (built.isOverCost) return;
-    const saved = saveCustomBuild({ ...state.draft, name: built.name });
+    const saved = saveCustomBuild({ ...state.draft, name: state.draft.name.trim() || "名称未設定ゴーレム" });
     state.draft.id = saved.id;
     renderSavedBuilds();
     showToast(`「${saved.name}」を保存しました`);
@@ -303,32 +271,33 @@ function bindEvents() {
 
   els.saveAsNewBtn.addEventListener("click", () => {
     if (!state.masterOk) return;
-    const built = calculateGolemBuild(state.draft, state.masterData);
-    if (built.isOverCost) return;
-    const saved = saveCustomBuild({
-      ...state.draft,
-      id: `custom_${Date.now()}`,
-      name: `${built.name} コピー`
-    });
+    const baseName = state.draft.name.trim() || "名称未設定ゴーレム";
+    const saved = saveCustomBuild({ ...state.draft, id: `custom_${Date.now()}`, name: `${baseName} コピー` });
     state.draft.id = saved.id;
     els.golemName.value = saved.name;
     renderSavedBuilds();
-    showToast(`「${saved.name}」として新規保存しました`);
+    showToast(`「${saved.name}」として保存しました`);
   });
 
   els.exportJsonBtn.addEventListener("click", () => {
     if (!state.masterOk) return;
-    const built = calculateGolemBuild(state.draft, state.masterData);
     const payload = {
-      name: built.name,
-      aiPolicy: built.aiPolicy,
-      coreId: built.core.id,
-      parts: state.draft.parts,
-      stats: built.stats,
-      totalCost: built.totalCost
+      version: "1.1",
+      name: state.draft.name.trim() || "名称未設定ゴーレム",
+      parts: {
+        core: state.draft.core,
+        head: state.draft.head,
+        rightArm: state.draft.rightArm,
+        leftArm: state.draft.leftArm,
+        rightWeapon: state.draft.rightWeapon || null,
+        leftWeapon: state.draft.leftWeapon || null,
+        rightLeg: state.draft.rightLeg,
+        leftLeg: state.draft.leftLeg
+      },
+      tactic: state.draft.tactic
     };
     navigator.clipboard?.writeText(JSON.stringify(payload, null, 2)).then(
-      () => showToast("ビルドJSONをクリップボードにコピーしました"),
+      () => showToast("ビルドJSONをコピーしました"),
       () => showToast("JSONを生成しました")
     );
   });
@@ -346,7 +315,6 @@ function bindEvents() {
 }
 
 async function init() {
-  els.golemName.value = state.draft.name;
   bindEvents();
   const res = await loadGolemMasterData();
   await applyMasterLoadResult(res);

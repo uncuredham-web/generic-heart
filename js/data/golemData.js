@@ -1,19 +1,18 @@
 // 「ジェネリックハート_パーツマスター_Ver1.1」のCSV公開URLを設定
 export const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQoLKur7M97rGwULb2fnoi2y8B1wsS9hgowMFDYWX9lnIiuk2e3kC-wHOgDU8v9XX-Sec31XA9MCYX7/pub?gid=501531529&single=true&output=csv";
-export const DEFAULT_COST_LIMIT = 100;
 
-export const STAT_LABELS = {
-  hp: "HP",
-  atk: "攻撃力",
-  def: "防御力",
-  spd: "素早さ"
+export const PART_CATEGORIES = {
+  core: "胴体",
+  head: "頭部",
+  arm: "腕部",
+  leg: "脚部",
+  weapons: ["物理武器", "魔力武器", "シールド"]
 };
 
 function createEmptyMasterData() {
   return {
-    costLimit: DEFAULT_COST_LIMIT,
-    cores: [],
-    parts: { arm: [], leg: [], chip: [] },
+    parts: [],
+    byId: {},
     presets: []
   };
 }
@@ -49,6 +48,46 @@ function parseCsvLine(line) {
   return cols;
 }
 
+export function parsePartsCsv(csvText) {
+  const lines = csvText
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  if (lines.length < 2) return [];
+
+  const headers = parseCsvLine(lines[0]);
+  return lines
+    .slice(1)
+    .map((line) => {
+      const cols = parseCsvLine(line);
+      const row = {};
+      headers.forEach((h, i) => {
+        row[h] = cols[i] ?? "";
+      });
+      return {
+        id: row.id,
+        cat: row.cat,
+        rarity: row.rarity || "コモン",
+        name: row.name,
+        slot: row.slot,
+        hp: Number(row.hp || 0),
+        baseCost: Number(row.baseCost || 0),
+        maxMp: Number(row.maxMp || 0),
+        mpRegen: Number(row.mpRegen || 0),
+        power: Number(row.power || 0),
+        useCost: Number(row.useCost || 0),
+        range: row.range || "-",
+        acc: Number(row.acc || 0),
+        move: Number(row.move || 0),
+        note: row.note || ""
+      };
+    })
+    .filter((p) => p.id && p.name);
+}
+
 export async function loadGolemMasterData() {
   const empty = createEmptyMasterData();
 
@@ -74,71 +113,16 @@ export async function loadGolemMasterData() {
     const res = await fetch(buildCsvUrl(SHEET_CSV_URL), { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const text = await res.text();
-    const lines = text
-      .replace(/^\uFEFF/, "")
-      .replace(/\r\n/g, "\n")
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+    const csvText = await res.text();
+    const parts = parsePartsCsv(csvText);
+    if (parts.length === 0) throw new Error("有効なパーツ行が見つかりませんでした");
 
-    if (lines.length <= 1) throw new Error("CSVデータ行が空です");
-
-    const loadedCores = [];
-    const loadedParts = { arm: [], leg: [], chip: [] };
-
-    for (const line of lines.slice(1)) {
-      const [type, id, name, slotOrRole, cost, hp, atk, def, spd, skillId, description] =
-        parseCsvLine(line);
-      if (!type || !id || !name) continue;
-
-      if (type === "core") {
-        loadedCores.push({
-          id,
-          name,
-          role: slotOrRole || "カスタム",
-          cost: Number(cost) || 0,
-          baseStats: {
-            hp: Number(hp) || 0,
-            atk: Number(atk) || 0,
-            def: Number(def) || 0,
-            spd: Number(spd) || 0
-          },
-          description: description || ""
-        });
-      } else if (type === "part" && loadedParts[slotOrRole]) {
-        const mods = {};
-        if (Number(hp)) mods.hp = Number(hp);
-        if (Number(atk)) mods.atk = Number(atk);
-        if (Number(def)) mods.def = Number(def);
-        if (Number(spd)) mods.spd = Number(spd);
-
-        loadedParts[slotOrRole].push({
-          id,
-          slot: slotOrRole,
-          name,
-          cost: Number(cost) || 0,
-          mods,
-          skillId: skillId || undefined,
-          description: description || ""
-        });
-      }
-    }
-
-    if (loadedCores.length === 0) {
-      throw new Error("コアデータが0件です");
-    }
-
+    const byId = Object.fromEntries(parts.map((p) => [p.id, p]));
     return {
-      data: {
-        costLimit: DEFAULT_COST_LIMIT,
-        cores: loadedCores,
-        parts: loadedParts,
-        presets: []
-      },
+      data: { parts, byId, presets: [] },
       source: "sheet",
       ok: true,
-      message: `「ジェネリックハート_パーツマスター_Ver1.1」読込完了（コア${loadedCores.length}件）`
+      message: `「ジェネリックハート_パーツマスター_Ver1.1」読込完了（${parts.length}件）`
     };
   } catch (err) {
     return {
