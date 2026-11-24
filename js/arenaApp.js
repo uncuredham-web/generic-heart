@@ -230,6 +230,21 @@ const els = {
   battleLog: document.getElementById("battle-log")
 };
 
+const BATTLE_BUTTONS = [
+  els.startBattleBtn,
+  els.startBattle10Btn,
+  els.randomBattleBtn,
+  els.randomBattle10Btn
+].filter(Boolean);
+
+function setActiveBattleButton(activeBtn) {
+  BATTLE_BUTTONS.forEach((btn) => {
+    const isActive = btn === activeBtn;
+    btn.classList.toggle("btn-primary", isActive);
+    btn.classList.toggle("btn-secondary", !isActive);
+  });
+}
+
 function escapeHtml(str) {
   return String(str)
     .replaceAll("&", "&amp;")
@@ -240,10 +255,9 @@ function escapeHtml(str) {
 
 function updateBattleButtonsState() {
   if (!state.masterOk || !state.masterData) {
-    if (els.startBattleBtn) els.startBattleBtn.disabled = true;
-    if (els.startBattle10Btn) els.startBattle10Btn.disabled = true;
-    if (els.randomBattleBtn) els.randomBattleBtn.disabled = true;
-    if (els.randomBattle10Btn) els.randomBattle10Btn.disabled = true;
+    BATTLE_BUTTONS.forEach((btn) => {
+      btn.disabled = true;
+    });
     return;
   }
 
@@ -254,32 +268,23 @@ function updateBattleButtonsState() {
   const check2 = f2 ? validateBuildRarityLimits(f2, state.masterData) : { ok: false };
   const canStart = Boolean(f1 && f2 && check1.ok && check2.ok);
 
-  if (els.startBattleBtn) {
-    els.startBattleBtn.disabled = !canStart;
-  }
-  if (els.startBattle10Btn) {
-    els.startBattle10Btn.disabled = !canStart;
-  }
+  if (els.startBattleBtn) els.startBattleBtn.disabled = !canStart;
+  if (els.startBattle10Btn) els.startBattle10Btn.disabled = !canStart;
 
   const legalCount = state.builds.filter(
     (b) => validateBuildRarityLimits(b, state.masterData).ok
   ).length;
-  if (els.randomBattleBtn) {
-    els.randomBattleBtn.disabled = legalCount < 2;
-  }
-  if (els.randomBattle10Btn) {
-    els.randomBattle10Btn.disabled = legalCount < 2;
-  }
+  if (els.randomBattleBtn) els.randomBattleBtn.disabled = legalCount < 2;
+  if (els.randomBattle10Btn) els.randomBattle10Btn.disabled = legalCount < 2;
 }
 
 function setArenaControlsLocked(locked) {
   if (els.fighter1Select) els.fighter1Select.disabled = locked;
   if (els.fighter2Select) els.fighter2Select.disabled = locked;
   if (locked) {
-    if (els.startBattleBtn) els.startBattleBtn.disabled = true;
-    if (els.startBattle10Btn) els.startBattle10Btn.disabled = true;
-    if (els.randomBattleBtn) els.randomBattleBtn.disabled = true;
-    if (els.randomBattle10Btn) els.randomBattle10Btn.disabled = true;
+    BATTLE_BUTTONS.forEach((btn) => {
+      btn.disabled = true;
+    });
   } else {
     updateBattleButtonsState();
   }
@@ -555,22 +560,7 @@ function validatePairForBattle(f1, f2) {
   return true;
 }
 
-function handleStartBattle() {
-  if (!state.masterOk || !state.masterData) return;
-  const f1 = state.builds.find((b) => b.id === state.fighter1Id) || state.builds[0];
-  const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
-  if (!validatePairForBattle(f1, f2)) return;
-
-  const result = runAutoBattle(f1, f2, state.masterData);
-  renderBattleResult(result);
-}
-
-function handleStartBattle10() {
-  if (!state.masterOk || !state.masterData) return;
-  const f1 = state.builds.find((b) => b.id === state.fighter1Id) || state.builds[0];
-  const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
-  if (!validatePairForBattle(f1, f2)) return;
-
+function executeTenMatchSeries(f1, f2, titlePrefix = "") {
   const name1 = f1.name || "機体1";
   const name2 = f2.name || "機体2";
   let wins1 = 0;
@@ -594,10 +584,31 @@ function handleStartBattle10() {
   }
 
   renderTenBattleResult({
-    title: `${name1} vs ${name2}（10連戦）`,
+    title: `${titlePrefix}${name1} vs ${name2}（10連戦）`,
     scoreLine: `${name1}：${wins1}勝 ／ ${name2}：${wins2}勝（引分：${draws}回）`,
     summaryLines
   });
+}
+
+function handleStartBattle() {
+  if (!state.masterOk || !state.masterData) return;
+  setActiveBattleButton(els.startBattleBtn);
+  const f1 = state.builds.find((b) => b.id === state.fighter1Id) || state.builds[0];
+  const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
+  if (!validatePairForBattle(f1, f2)) return;
+
+  const result = runAutoBattle(f1, f2, state.masterData);
+  renderBattleResult(result);
+}
+
+function handleStartBattle10() {
+  if (!state.masterOk || !state.masterData) return;
+  setActiveBattleButton(els.startBattle10Btn);
+  const f1 = state.builds.find((b) => b.id === state.fighter1Id) || state.builds[0];
+  const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
+  if (!validatePairForBattle(f1, f2)) return;
+
+  executeTenMatchSeries(f1, f2);
 }
 
 function pickRandomLegalPair(legalBuilds) {
@@ -611,6 +622,7 @@ function pickRandomLegalPair(legalBuilds) {
 
 function handleRandomBattle() {
   if (!state.masterOk || !state.masterData || state.builds.length === 0) return;
+  setActiveBattleButton(els.randomBattleBtn);
   const legalBuilds = state.builds.filter(
     (b) => validateBuildRarityLimits(b, state.masterData).ok
   );
@@ -630,6 +642,7 @@ function handleRandomBattle() {
 
 function handleRandomBattle10() {
   if (!state.masterOk || !state.masterData || state.builds.length === 0) return;
+  setActiveBattleButton(els.randomBattle10Btn);
   const legalBuilds = state.builds.filter(
     (b) => validateBuildRarityLimits(b, state.masterData).ok
   );
@@ -639,44 +652,12 @@ function handleRandomBattle10() {
     return;
   }
 
-  const winCounts = new Map();
-  let draws = 0;
-  const summaryLines = [];
-  let lastPair = null;
-
-  for (let i = 1; i <= 10; i++) {
-    const [b1, b2] = pickRandomLegalPair(legalBuilds);
-    lastPair = [b1, b2];
-    const name1 = b1.name || "機体1";
-    const name2 = b2.name || "機体2";
-    const res = runAutoBattle(b1, b2, state.masterData);
-
-    if (res.winnerSide === "fighter1") {
-      winCounts.set(name1, (winCounts.get(name1) || 0) + 1);
-      summaryLines.push(`${i}戦目：${name1} vs ${name2} → ${name1} の勝利`);
-    } else if (res.winnerSide === "fighter2") {
-      winCounts.set(name2, (winCounts.get(name2) || 0) + 1);
-      summaryLines.push(`${i}戦目：${name1} vs ${name2} → ${name2} の勝利`);
-    } else {
-      draws += 1;
-      summaryLines.push(`${i}戦目：${name1} vs ${name2} → 引き分け`);
-    }
-  }
-
-  if (lastPair) {
-    state.fighter1Id = lastPair[0].id;
-    state.fighter2Id = lastPair[1].id;
-    syncBuildSelectors();
-  }
-
-  const scoreParts = Array.from(winCounts.entries()).map(([name, cnt]) => `${name}：${cnt}勝`);
-  scoreParts.push(`引分：${draws}回`);
-
-  renderTenBattleResult({
-    title: "ランダム対戦×10（全10戦）",
-    scoreLine: scoreParts.join(" ／ "),
-    summaryLines
-  });
+  const [b1, b2] = pickRandomLegalPair(legalBuilds);
+  state.fighter1Id = b1.id;
+  state.fighter2Id = b2.id;
+  state.lastWinnerSide = null;
+  syncBuildSelectors();
+  executeTenMatchSeries(b1, b2, "ランダム選出：");
 }
 
 async function applyMasterLoadResult(res) {
