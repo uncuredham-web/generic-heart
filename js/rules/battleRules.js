@@ -187,16 +187,19 @@ function executeSingleAttack(actor, defender, weapon, logs) {
   );
   const roll = Math.random() * 100;
   const handPrefix = weapon.hand && !String(weapon.hand).startsWith("内蔵") ? `[${weapon.hand}] ` : "";
+  const dualTag = actor.isDualWield ? "・二刀流補正" : "";
 
   if (roll > hitChance) {
-    logs.push(`・${actor.name} の${handPrefix}「${weapon.name}」は外れた！（消費MP:${cost} / 残MP:${actor.mp}）`);
+    logs.push(
+      `・${actor.name} の${handPrefix}「${weapon.name}」は外れた！（命中:${hitChance}%${dualTag} / 消費MP:${cost} / 残MP:${actor.mp}）`
+    );
     return;
   }
 
   const dmg = Math.max(1, getWeaponPower(weapon));
   defender.hp = Math.max(0, defender.hp - dmg);
   logs.push(
-    `・${actor.name} が${handPrefix}「${weapon.name}」で攻撃！ ${defender.name} に ${dmg} ダメージ（消費MP:${cost} / 残MP:${actor.mp} / 相手耐久:${defender.hp}）`
+    `・${actor.name} が${handPrefix}「${weapon.name}」で攻撃！ ${defender.name} に ${dmg} ダメージ（命中:${hitChance}%${dualTag} / 消費MP:${cost} / 残MP:${actor.mp} / 相手耐久:${defender.hp}）`
   );
 
   if (defender.hp <= 0) {

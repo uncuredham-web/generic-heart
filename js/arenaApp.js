@@ -104,18 +104,20 @@ function renderFighterCard(targetEl, build) {
   const st = calcFighterStats(build, state.masterData);
   const eq = st.equipmentSummary;
   targetEl.innerHTML = `
-    <div class="preview-header">
-      <h3 class="preview-name">${escapeHtml(st.name)}</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+      <h3 style="margin:0;font-size:1.1rem;">${escapeHtml(st.name)}</h3>
       <span class="tag">${escapeHtml(st.tactic)}</span>
     </div>
-    <p class="muted" style="margin:0 0 8px;">さくせん: ${escapeHtml(st.tactic)}</p>
     <div class="equip-summary muted">
-      <div class="equip-row">胴体: ${escapeHtml(eq.core)} / 頭部: ${escapeHtml(eq.head)}</div>
-      <div class="equip-row">右腕: ${escapeHtml(eq.rightArm)} / 左腕: ${escapeHtml(eq.leftArm)}</div>
-      <div class="equip-row">脚部: ${escapeHtml(eq.leg)}</div>
-      <div class="equip-row">右手: ${escapeHtml(eq.rightWeapon)} / 左手: ${escapeHtml(eq.leftWeapon)}</div>
+      <div class="equip-row"><strong>胴体:</strong> ${escapeHtml(eq.core)}</div>
+      <div class="equip-row"><strong>頭部:</strong> ${escapeHtml(eq.head)}</div>
+      <div class="equip-row"><strong>右腕:</strong> ${escapeHtml(eq.rightArm)}</div>
+      <div class="equip-row"><strong>左腕:</strong> ${escapeHtml(eq.leftArm)}</div>
+      <div class="equip-row"><strong>脚部:</strong> ${escapeHtml(eq.leg)}</div>
+      <div class="equip-row"><strong>右手:</strong> ${escapeHtml(eq.rightWeapon)}</div>
+      <div class="equip-row"><strong>左手:</strong> ${escapeHtml(eq.leftWeapon)}</div>
     </div>
-    <div class="stats-grid">
+    <div class="stats-grid" style="grid-template-columns:repeat(3, minmax(0, 1fr));">
       <div class="stat-box"><div class="stat-label">胴体耐久</div><div class="stat-value">${st.hp}</div></div>
       <div class="stat-box"><div class="stat-label">最大魔力</div><div class="stat-value">${st.mp}</div></div>
       <div class="stat-box"><div class="stat-label">移動力</div><div class="stat-value">${st.move}</div></div>
