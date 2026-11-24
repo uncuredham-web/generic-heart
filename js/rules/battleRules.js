@@ -434,8 +434,11 @@ function getAvailableWeapons(fighter, mpLimit = fighter.mp) {
   return usableBuiltin.filter((w) => getWeaponCost(w) <= mpLimit);
 }
 
-function hasAnyAttackOption(fighter) {
-  return getAvailableWeapons(fighter, fighter.mp).length > 0;
+// 案1：現時点で使える武器がなく、かつ毎ターンMP回復が0以下（回復待ちで使えるようになる見込みがない）なら降伏対象
+function shouldSurrenderNow(fighter) {
+  const hasUsableNow = getAvailableWeapons(fighter, fighter.mp).length > 0;
+  if (hasUsableNow) return false;
+  return Number(fighter.mpRegen || 0) <= 0;
 }
 
 function pickWeaponsForAction(fighter, distanceAfterMove, actionType, tactic) {
@@ -740,7 +743,7 @@ function executePlanAttacks(plan, defender, distanceAfterMove, logs) {
       );
     } else {
       logs.push(
-        `・${actor.name} は攻撃可能な武器がないか魔力不足のため攻撃できず\n（残MP:${actor.mp}）`
+        `・${actor.name} は攻撃可能な武器がないか魔力不足のため攻撃できず\n（残MP:${actor.mp} / 毎ターンMP回復:${actor.mpRegen}）`
       );
     }
     return;
@@ -811,19 +814,23 @@ export function runAutoBattle(build1, build2, masterData) {
       f.mp = Math.max(0, Math.min(f.maxMp, f.mp + f.mpRegen));
     }
 
-    // 攻撃手段がなくなった機体の降伏チェック
-    const noAttack1 = !hasAnyAttackOption(f1);
-    const noAttack2 = !hasAnyAttackOption(f2);
+    // 案1：現在使える攻撃手段がなく、かつ毎ターンMP回復が0以下なら降伏
+    const noAttack1 = shouldSurrenderNow(f1);
+    const noAttack2 = shouldSurrenderNow(f2);
     if (noAttack1 || noAttack2) {
       if (noAttack1) {
         f1.surrendered = true;
         surrender1 = true;
-        logs.push(`・【降伏】${f1.name} は攻撃手段がなくなったため降伏した\n（残MP:${f1.mp}）`);
+        logs.push(
+          `・【降伏】${f1.name} は攻撃手段がなく、魔力回復も見込めないため降伏した\n（残MP:${f1.mp} / 毎ターンMP回復:${f1.mpRegen}）`
+        );
       }
       if (noAttack2) {
         f2.surrendered = true;
         surrender2 = true;
-        logs.push(`・【降伏】${f2.name} は攻撃手段がなくなったため降伏した\n（残MP:${f2.mp}）`);
+        logs.push(
+          `・【降伏】${f2.name} は攻撃手段がなく、魔力回復も見込めないため降伏した\n（残MP:${f2.mp} / 毎ターンMP回復:${f2.mpRegen}）`
+        );
       }
       break;
     }
