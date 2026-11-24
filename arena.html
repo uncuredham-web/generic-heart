@@ -6,6 +6,37 @@
   <title>ゴーレムアリーナ | ジェネリックハート</title>
   <link rel="stylesheet" href="./css/common.css" />
   <link rel="stylesheet" href="./css/arena.css" />
+  <style>
+    .battle-banner {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      background: rgba(34, 197, 94, 0.16);
+      border: 1px solid rgba(34, 197, 94, 0.45);
+      color: #bbf7d0;
+    }
+    .battle-log {
+      margin-top: 12px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      max-height: 460px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+    .log-line {
+      padding: 1px 0;
+      border-bottom: 1px dashed rgba(148, 163, 184, 0.08);
+    }
+    .log-line:last-child {
+      border-bottom: none;
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
@@ -42,34 +73,32 @@
     <section class="panel">
       <h2 class="panel-title">対戦カード選択</h2>
 
-      <div class="fighter-select-grid">
+      <div class="form-row">
         <div>
-          <label for="fighter-a-select">機体1</label>
-          <select id="fighter-a-select"></select>
-          <div id="fighter-a-card" class="fighter-card"></div>
+          <label for="fighter1-select">機体1</label>
+          <select id="fighter1-select"></select>
         </div>
-
-        <div class="vs-badge">VS</div>
-
         <div>
-          <label for="fighter-b-select">機体2</label>
-          <select id="fighter-b-select"></select>
-          <div id="fighter-b-card" class="fighter-card"></div>
+          <label for="fighter2-select">機体2</label>
+          <select id="fighter2-select"></select>
         </div>
       </div>
 
-      <div class="arena-controls">
+      <div class="form-row" style="margin-top:16px;">
+        <div id="fighter1-card" class="preview-card"></div>
+        <div id="fighter2-card" class="preview-card"></div>
+      </div>
+
+      <div class="action-bar" style="margin-top:16px;">
         <button id="start-battle-btn" type="button" class="btn btn-primary">バトル開始</button>
-        <button id="random-match-btn" type="button" class="btn btn-secondary">ランダム対戦</button>
+        <button id="random-battle-btn" type="button" class="btn btn-secondary">ランダム対戦</button>
       </div>
 
-      <div id="battle-summary"></div>
-      <div id="battle-log" class="battle-log">
-        <p class="muted" style="margin:0;">「バトル開始」を押すと、ターンごとの戦闘ログがここに表示されます。</p>
-      </div>
+      <div id="battle-banner" class="battle-banner" style="display:none;"></div>
+      <div id="battle-log" class="battle-log" style="display:none;"></div>
     </section>
   </main>
 
-  <script type="module" src="./js/arenaApp.js"></script>
+  <script type="module" src="./js/arenaApp.js?v=2"></script>
 </body>
 </html>
