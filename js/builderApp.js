@@ -103,6 +103,14 @@ const els = {
   savedList: document.getElementById("saved-list")
 };
 
+function getRarityClass(rarity) {
+  const r = String(rarity || "").trim();
+  if (r === "アンコモン") return "rarity-uncommon";
+  if (r === "レア") return "rarity-rare";
+  if (r === "レジェンド") return "rarity-legend";
+  return "rarity-common";
+}
+
 function isDualArmPart(part) {
   if (!part) return false;
   const text = `${part.slot || ""} ${part.cat || ""} ${part.name || ""} ${part.note || ""}`;
@@ -224,11 +232,16 @@ function renderList(container, items, selectedId, onPick, disabled = false) {
   container.innerHTML = items
     .map((p) => {
       const sel = p.id === selectedId ? "is-selected" : "";
+      const rarityLabel = p.rarity || "コモン";
+      const rarityClass = getRarityClass(rarityLabel);
       return `
-        <div class="part-card ${sel}" data-part-id="${p.id}" aria-disabled="${disabled ? "true" : "false"}">
+        <div class="part-card ${sel}" data-part-id="${p.id}" data-rarity="${escapeHtml(rarityLabel)}" aria-disabled="${disabled ? "true" : "false"}">
           <div class="part-card-header">
             <span>${escapeHtml(p.name)}</span>
-            <span class="part-cost">${escapeHtml(p.cat)}</span>
+            <div class="part-badges">
+              <span class="rarity-badge ${rarityClass}">${escapeHtml(rarityLabel)}</span>
+              <span class="part-cost">${escapeHtml(p.cat)}</span>
+            </div>
           </div>
           <p class="part-desc">${escapeHtml(p.note || "")}</p>
           <div class="part-mods">${escapeHtml(formatPartSpec(p))}</div>
