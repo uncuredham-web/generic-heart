@@ -7,17 +7,25 @@
   <link rel="stylesheet" href="./css/common.css" />
   <link rel="stylesheet" href="./css/arena.css" />
   <style>
+    html,
+    body,
+    .page-container,
+    .arena-panel {
+      overflow: visible;
+    }
     .fighters-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
       margin-top: 16px;
       align-items: start;
+      overflow: visible;
     }
     .sticky-fighter-card {
+      position: -webkit-sticky;
       position: sticky;
-      top: 20px;
-      z-index: 2;
+      top: 16px;
+      z-index: 5;
     }
     .equip-summary {
       margin: 0 0 12px;
@@ -98,7 +106,7 @@
 
     <div id="master-error" class="panel" style="display:none; border-color:var(--danger); color:#fca5a5; margin-bottom:20px;" role="alert"></div>
 
-    <section class="panel">
+    <section class="panel arena-panel">
       <h2 class="panel-title">対戦カード選択</h2>
 
       <div class="form-row">
@@ -127,6 +135,6 @@
     </section>
   </main>
 
-  <script type="module" src="./js/arenaApp.js?v=3"></script>
+  <script type="module" src="./js/arenaApp.js?v=5"></script>
 </body>
 </html>
