@@ -87,8 +87,22 @@ function renderStatus(statusInfo) {
 }
 
 function getAllBuilds() {
-  const saved = loadSavedBuilds() || [];
-  return [...saved, ...DEFAULT_BUILDS];
+  const saved = Array.isArray(loadSavedBuilds()) ? loadSavedBuilds() : [];
+  const seenIds = new Set(saved.map((b) => String(b.id || "")).filter(Boolean));
+  const seenNames = new Set(
+    saved.map((b) => String(b.name || "").trim()).filter(Boolean)
+  );
+
+  const merged = [...saved];
+  for (const preset of DEFAULT_BUILDS) {
+    const pId = String(preset.id || "");
+    const pName = String(preset.name || "").trim();
+    if (seenIds.has(pId) || seenNames.has(pName)) continue;
+    merged.push(preset);
+    if (pId) seenIds.add(pId);
+    if (pName) seenNames.add(pName);
+  }
+  return merged;
 }
 
 function renderFighterCard(targetEl, build) {
@@ -174,9 +188,12 @@ function syncBuildSelectors() {
   }
 
   state.builds = getAllBuilds();
-  if (!state.fighter1Id && state.builds[0]) state.fighter1Id = state.builds[0].id;
-  if (!state.fighter2Id && state.builds[1]) state.fighter2Id = state.builds[1].id;
-  if (!state.fighter2Id && state.builds[0]) state.fighter2Id = state.builds[0].id;
+  if (!state.builds.some((b) => b.id === state.fighter1Id)) {
+    state.fighter1Id = state.builds[0]?.id || "";
+  }
+  if (!state.builds.some((b) => b.id === state.fighter2Id)) {
+    state.fighter2Id = state.builds[1]?.id || state.builds[0]?.id || "";
+  }
 
   const optionsHtml = state.builds
     .map((b) => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.name || "名称未設定ゴーレム")}</option>`)
@@ -248,6 +265,14 @@ function bindEvents() {
     const res = await loadGolemMasterData();
     await applyMasterLoadResult(res);
     showToast(res.message);
+  });
+
+  window.addEventListener("storage", () => {
+    syncBuildSelectors();
+  });
+
+  window.addEventListener("focus", () => {
+    syncBuildSelectors();
   });
 }
 
