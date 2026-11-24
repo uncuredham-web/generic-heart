@@ -105,31 +105,38 @@ const els = {
 
 function isDualArmPart(part) {
   if (!part) return false;
-  const text = `${part.slot || ""} ${part.cat || ""} ${part.note || ""}`;
+  const text = `${part.slot || ""} ${part.cat || ""} ${part.name || ""} ${part.note || ""}`;
   return text.includes("両腕");
 }
 
 function isDualWeaponPart(part) {
   if (!part) return false;
-  const text = `${part.slot || ""} ${part.cat || ""} ${part.note || ""}`;
+  const text = `${part.slot || ""} ${part.cat || ""} ${part.name || ""} ${part.note || ""}`;
   return text.includes("両手");
 }
 
 function isDualLegPart(part) {
   if (!part) return false;
-  const text = `${part.slot || ""} ${part.cat || ""} ${part.note || ""}`;
-  return text.includes("両脚");
+  const text = `${part.slot || ""} ${part.cat || ""} ${part.name || ""} ${part.note || ""}`;
+  return (
+    text.includes("両脚") ||
+    text.includes("両脚占有") ||
+    text.includes("ユニット") ||
+    text.includes("多脚")
+  );
 }
 
 function isIntegratedWeaponPart(part) {
   if (!part) return false;
-  const text = `${part.slot || ""} ${part.cat || ""} ${part.note || ""}`;
+  const text = `${part.slot || ""} ${part.cat || ""} ${part.name || ""} ${part.note || ""}`;
   return text.includes("武器一体") || text.includes("一体型") || text.includes("武器内蔵");
 }
 
 function normalizeDraftConstraints() {
   if (!state.masterData) return;
-  const { byId } = state.masterData;
+  const { byId, parts } = state.masterData;
+  const legs = parts.filter((p) => p.cat === "脚部");
+  const fallbackSingleLeg = legs.find((p) => !isDualLegPart(p))?.id || "";
 
   const rArm = byId[state.draft.rightArm];
   const lArm = byId[state.draft.leftArm];
@@ -161,7 +168,7 @@ function normalizeDraftConstraints() {
   if (isDualLegPart(rLeg)) {
     state.draft.leftLeg = rLeg.id;
   } else if (isDualLegPart(lLeg)) {
-    state.draft.rightLeg = lLeg.id;
+    state.draft.leftLeg = isDualLegPart(rLeg) ? rLeg.id : fallbackSingleLeg || state.draft.rightLeg;
   }
 }
 
@@ -428,7 +435,7 @@ function renderAll() {
 
   const rightWeaponDisabled = isIntegratedWeaponPart(rArmObj);
   const leftWeaponDisabled = leftArmDisabled || isIntegratedWeaponPart(lArmObj);
-  const leftLegDisabled = isDualLegPart(rLegObj) || isDualLegPart(lLegObj);
+  const leftLegDisabled = isDualLegPart(rLegObj);
 
   renderList(els.rightArmList, arms, state.draft.rightArm, (id) => {
     const picked = byId[id];
@@ -513,6 +520,8 @@ function renderAll() {
     state.draft.rightLeg = id;
     if (isDualLegPart(picked)) {
       state.draft.leftLeg = id;
+    } else if (isDualLegPart(lLegObj) || state.draft.leftLeg === rLegObj?.id) {
+      state.draft.leftLeg = id;
     }
   });
 
@@ -527,13 +536,7 @@ function renderAll() {
     legs,
     state.draft.leftLeg,
     (id) => {
-      const picked = byId[id];
-      if (isDualLegPart(picked)) {
-        state.draft.rightLeg = id;
-        state.draft.leftLeg = id;
-      } else {
-        state.draft.leftLeg = id;
-      }
+      state.draft.leftLeg = id;
     },
     leftLegDisabled
   );
