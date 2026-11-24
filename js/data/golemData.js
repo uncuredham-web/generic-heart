@@ -24,7 +24,7 @@ export const PRESET_BUILDS = [
   {
     id: "preset_iron_knight",
     name: "アイアンナイト",
-    tactic: "確実に当てて押し切れ",
+    golemName: "アイアンナイト",
     core: "C02",
     head: "H01",
     rightArm: "A02",
@@ -32,25 +32,55 @@ export const PRESET_BUILDS = [
     rightLeg: "L01",
     leftLeg: "L01",
     rightWeapon: "W01",
-    leftWeapon: "S02"
+    leftWeapon: "S02",
+    tactic: "確実に当てて押し切れ"
   },
   {
-    id: "preset_arch_mage",
-    name: "アークメイジ",
-    tactic: "間合いを制して翻弄せよ",
-    core: "C05",
-    head: "H04",
+    id: "preset_bronze_hammer",
+    name: "ブロンズハンマー",
+    golemName: "ブロンズハンマー",
+    core: "C02",
+    head: "H02",
+    rightArm: "A02",
+    leftArm: "A02",
+    rightLeg: "L01",
+    leftLeg: "L01",
+    rightWeapon: "W03",
+    leftWeapon: "",
+    tactic: "確実に当てて押し切れ"
+  },
+  {
+    id: "preset_mana_spear",
+    name: "マナスピアシューター",
+    golemName: "マナスピアシューター",
+    core: "C03",
+    head: "H02",
     rightArm: "A01",
     leftArm: "A01",
-    rightLeg: "L05",
-    leftLeg: "",
-    rightWeapon: "W07",
-    leftWeapon: ""
+    rightLeg: "L02",
+    leftLeg: "L02",
+    rightWeapon: "W06",
+    leftWeapon: "W02",
+    tactic: "間合いを制して翻弄せよ"
   },
   {
-    id: "preset_twin_fang",
-    name: "ツインファング",
-    tactic: "全力で薙ぎ払え",
+    id: "preset_crystal_mage",
+    name: "クリスタルメイジ",
+    golemName: "クリスタルメイジ",
+    core: "C03",
+    head: "H01",
+    rightArm: "A01",
+    leftArm: "A02",
+    rightLeg: "L02",
+    leftLeg: "L01",
+    rightWeapon: "W05",
+    leftWeapon: "S01",
+    tactic: "間合いを制して翻弄せよ"
+  },
+  {
+    id: "preset_wind_duelist",
+    name: "ウィンドデュエリスト",
+    golemName: "ウィンドデュエリスト",
     core: "C01",
     head: "H02",
     rightArm: "A01",
@@ -58,33 +88,8 @@ export const PRESET_BUILDS = [
     rightLeg: "L02",
     leftLeg: "L02",
     rightWeapon: "W01",
-    leftWeapon: "W05"
-  },
-  {
-    id: "preset_aegis_bastion",
-    name: "イージスバスティオン",
-    tactic: "しぶとく生き残れ",
-    core: "C04",
-    head: "H01",
-    rightArm: "A02",
-    leftArm: "A02",
-    rightLeg: "L03",
-    leftLeg: "",
-    rightWeapon: "W04",
-    leftWeapon: ""
-  },
-  {
-    id: "preset_snipe_hunter",
-    name: "スナイプハンター",
-    tactic: "精密狙撃で仕留めろ",
-    core: "C03",
-    head: "H02",
-    rightArm: "A04",
-    leftArm: "A01",
-    rightLeg: "L04",
-    leftLeg: "",
-    rightWeapon: "W06",
-    leftWeapon: "S01"
+    leftWeapon: "W06",
+    tactic: "全力で薙ぎ払え"
   }
 ];
 
