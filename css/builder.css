@@ -75,3 +75,58 @@
 
 .saved-item-title { font-weight: 700; }
 .saved-item-actions { display: flex; gap: 6px; }
+
+.part-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rarity-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  border: 1px solid transparent;
+}
+
+.rarity-common {
+  background: rgba(148, 163, 184, 0.16);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.rarity-uncommon {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.42);
+}
+
+.rarity-rare {
+  background: rgba(56, 189, 248, 0.18);
+  color: #7dd3fc;
+  border-color: rgba(56, 189, 248, 0.48);
+}
+
+.rarity-legend {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+  border-color: rgba(251, 191, 36, 0.58);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+}
+
+.part-card[data-rarity="アンコモン"] {
+  border-left: 3px solid rgba(34, 197, 94, 0.65);
+}
+
+.part-card[data-rarity="レア"] {
+  border-left: 3px solid rgba(56, 189, 248, 0.75);
+}
+
+.part-card[data-rarity="レジェンド"] {
+  border-left: 3px solid rgba(251, 191, 36, 0.85);
+}

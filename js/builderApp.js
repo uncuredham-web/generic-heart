@@ -31,8 +31,8 @@ const PRESETS = [
     head: "H02",
     rightArm: "A01",
     leftArm: "A01",
-    rightWeapon: "W05",
-    leftWeapon: "W02",
+    rightWeapon: "W06",
+    leftWeapon: "W05",
     rightLeg: "L02",
     leftLeg: "L02",
     tactic: "距離をとって戦え"
