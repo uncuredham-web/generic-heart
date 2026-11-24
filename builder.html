@@ -6,6 +6,25 @@
   <title>ゴーレムビルダー | ジェネリックハート</title>
   <link rel="stylesheet" href="./css/common.css" />
   <link rel="stylesheet" href="./css/builder.css" />
+  <style>
+    .side-columns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+    .side-col-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin: 0 0 8px;
+      color: var(--text-muted, #94a3b8);
+    }
+    @media (max-width: 720px) {
+      .side-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
@@ -65,44 +84,41 @@
         <h2 class="panel-title" style="margin-top:20px;">3. 頭部</h2>
         <div id="head-list" class="part-list"></div>
 
-        <h2 class="panel-title" style="margin-top:20px;">4. 腕部</h2>
-        <div class="form-row" style="margin-bottom:10px;align-items:end;">
+        <h2 class="panel-title" style="margin-top:20px;">4. 腕部（右腕・左腕）</h2>
+        <div class="side-columns">
           <div>
-            <label for="arm-target-select">編集する腕</label>
-            <select id="arm-target-select">
-              <option value="rightArm">右腕</option>
-              <option value="leftArm">左腕</option>
-            </select>
+            <h3 class="side-col-title">右腕</h3>
+            <div id="right-arm-list" class="part-list"></div>
           </div>
-          <div id="arm-current-summary" class="muted"></div>
+          <div>
+            <h3 class="side-col-title">左腕</h3>
+            <div id="left-arm-list" class="part-list"></div>
+          </div>
         </div>
-        <div id="arm-list" class="part-list"></div>
 
-        <h2 class="panel-title" style="margin-top:20px;">5. 脚部</h2>
-        <div class="form-row" style="margin-bottom:10px;align-items:end;">
+        <h2 class="panel-title" style="margin-top:20px;">5. 脚部（右脚・左脚 / 脚部ユニット）</h2>
+        <div class="side-columns">
           <div>
-            <label for="leg-target-select">編集する脚</label>
-            <select id="leg-target-select">
-              <option value="rightLeg">右脚</option>
-              <option value="leftLeg">左脚</option>
-            </select>
+            <h3 class="side-col-title">右脚</h3>
+            <div id="right-leg-list" class="part-list"></div>
           </div>
-          <div id="leg-current-summary" class="muted"></div>
+          <div>
+            <h3 class="side-col-title">左脚</h3>
+            <div id="left-leg-list" class="part-list"></div>
+          </div>
         </div>
-        <div id="leg-list" class="part-list"></div>
 
-        <h2 class="panel-title" style="margin-top:20px;">6. 武器・シールド</h2>
-        <div class="form-row" style="margin-bottom:10px;align-items:end;">
+        <h2 class="panel-title" style="margin-top:20px;">6. 武器・シールド（右手・左手）</h2>
+        <div class="side-columns">
           <div>
-            <label for="weapon-target-select">編集する手</label>
-            <select id="weapon-target-select">
-              <option value="rightWeapon">右手</option>
-              <option value="leftWeapon">左手</option>
-            </select>
+            <h3 class="side-col-title">右手</h3>
+            <div id="right-weapon-list" class="part-list"></div>
           </div>
-          <div id="weapon-current-summary" class="muted"></div>
+          <div>
+            <h3 class="side-col-title">左手</h3>
+            <div id="left-weapon-list" class="part-list"></div>
+          </div>
         </div>
-        <div id="weapon-list" class="part-list"></div>
       </section>
 
       <aside class="panel">
@@ -123,6 +139,6 @@
     </div>
   </main>
 
-  <script type="module" src="./js/builderApp.js?v=4"></script>
+  <script type="module" src="./js/builderApp.js?v=5"></script>
 </body>
 </html>

@@ -56,11 +56,6 @@ const PRESETS = [
 const state = {
   masterData: null,
   masterOk: false,
-  editTarget: {
-    arm: "rightArm",
-    leg: "rightLeg",
-    weapon: "rightWeapon"
-  },
   draft: {
     id: null,
     name: "",
@@ -86,15 +81,12 @@ const els = {
   applyPresetBtn: document.getElementById("apply-preset-btn"),
   coreList: document.getElementById("core-list"),
   headList: document.getElementById("head-list"),
-  armTargetSelect: document.getElementById("arm-target-select"),
-  armCurrentSummary: document.getElementById("arm-current-summary"),
-  armList: document.getElementById("arm-list"),
-  legTargetSelect: document.getElementById("leg-target-select"),
-  legCurrentSummary: document.getElementById("leg-current-summary"),
-  legList: document.getElementById("leg-list"),
-  weaponTargetSelect: document.getElementById("weapon-target-select"),
-  weaponCurrentSummary: document.getElementById("weapon-current-summary"),
-  weaponList: document.getElementById("weapon-list"),
+  rightArmList: document.getElementById("right-arm-list"),
+  leftArmList: document.getElementById("left-arm-list"),
+  rightLegList: document.getElementById("right-leg-list"),
+  leftLegList: document.getElementById("left-leg-list"),
+  rightWeaponList: document.getElementById("right-weapon-list"),
+  leftWeaponList: document.getElementById("left-weapon-list"),
   previewCard: document.getElementById("preview-card"),
   saveBuildBtn: document.getElementById("save-build-btn"),
   saveAsNewBtn: document.getElementById("save-as-new-btn"),
@@ -115,14 +107,18 @@ function renderStatus(statusInfo) {
 }
 
 function clearBlankBuilder() {
-  els.coreList.innerHTML = "";
-  els.headList.innerHTML = "";
-  els.armList.innerHTML = "";
-  els.legList.innerHTML = "";
-  els.weaponList.innerHTML = "";
-  if (els.armCurrentSummary) els.armCurrentSummary.textContent = "";
-  if (els.legCurrentSummary) els.legCurrentSummary.textContent = "";
-  if (els.weaponCurrentSummary) els.weaponCurrentSummary.textContent = "";
+  [
+    els.coreList,
+    els.headList,
+    els.rightArmList,
+    els.leftArmList,
+    els.rightLegList,
+    els.leftLegList,
+    els.rightWeaponList,
+    els.leftWeaponList
+  ].forEach((el) => {
+    if (el) el.innerHTML = "";
+  });
   if (els.presetSelect) els.presetSelect.innerHTML = "";
   els.previewCard.innerHTML = "";
   els.savedList.innerHTML = "";
@@ -144,6 +140,7 @@ function formatPartSpec(p) {
 }
 
 function renderList(container, items, selectedId, onPick) {
+  if (!container) return;
   container.innerHTML = items
     .map((p) => {
       const sel = p.id === selectedId ? "is-selected" : "";
@@ -166,30 +163,6 @@ function renderList(container, items, selectedId, onPick) {
       renderAll();
     });
   });
-}
-
-function renderSideSummaries() {
-  const { byId } = state.masterData;
-  const rArm = byId[state.draft.rightArm]?.name || "未選択";
-  const lArm = byId[state.draft.leftArm]?.name || "未選択";
-  if (els.armCurrentSummary) {
-    els.armCurrentSummary.textContent = `現在：右腕「${rArm}」／左腕「${lArm}」`;
-  }
-
-  const rLegObj = byId[state.draft.rightLeg];
-  const lLegObj = byId[state.draft.leftLeg];
-  const isDual = rLegObj?.slot === "両脚占有";
-  if (els.legCurrentSummary) {
-    els.legCurrentSummary.textContent = isDual
-      ? `現在：両脚占有「${rLegObj.name}」`
-      : `現在：右脚「${rLegObj?.name || "未選択"}」／左脚「${lLegObj?.name || "未選択"}」`;
-  }
-
-  const rWeap = byId[state.draft.rightWeapon]?.name || "なし";
-  const lWeap = byId[state.draft.leftWeapon]?.name || "なし";
-  if (els.weaponCurrentSummary) {
-    els.weaponCurrentSummary.textContent = `現在：右手「${rWeap}」／左手「${lWeap}」（再クリックで解除）`;
-  }
 }
 
 function renderPreview() {
@@ -306,6 +279,23 @@ function applyPresetById(presetId) {
   showToast(`プリセット「${p.name}」を反映しました`);
 }
 
+function handleLegPick(sideKey, id, legs) {
+  const leg = state.masterData.byId[id];
+  if (!leg) return;
+  if (leg.slot === "両脚占有") {
+    state.draft.rightLeg = id;
+    state.draft.leftLeg = id;
+    return;
+  }
+  const otherKey = sideKey === "rightLeg" ? "leftLeg" : "rightLeg";
+  const otherLeg = state.masterData.byId[state.draft[otherKey]];
+  state.draft[sideKey] = id;
+  if (otherLeg?.slot === "両脚占有") {
+    const fallback = legs.find((x) => x.slot !== "両脚占有")?.id || id;
+    state.draft[otherKey] = fallback;
+  }
+}
+
 function renderAll() {
   if (!state.masterOk || !state.masterData) {
     clearBlankBuilder();
@@ -336,10 +326,6 @@ function renderAll() {
   els.tacticSelect.innerHTML = TACTICS.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
   els.tacticSelect.value = state.draft.tactic || TACTICS[0];
 
-  if (els.armTargetSelect) els.armTargetSelect.value = state.editTarget.arm;
-  if (els.legTargetSelect) els.legTargetSelect.value = state.editTarget.leg;
-  if (els.weaponTargetSelect) els.weaponTargetSelect.value = state.editTarget.weapon;
-
   renderList(els.coreList, cores, state.draft.core, (id) => {
     state.draft.core = id;
   });
@@ -348,35 +334,27 @@ function renderAll() {
     state.draft.head = id;
   });
 
-  const activeArmKey = state.editTarget.arm;
-  renderList(els.armList, arms, state.draft[activeArmKey], (id) => {
-    state.draft[activeArmKey] = id;
+  renderList(els.rightArmList, arms, state.draft.rightArm, (id) => {
+    state.draft.rightArm = id;
+  });
+  renderList(els.leftArmList, arms, state.draft.leftArm, (id) => {
+    state.draft.leftArm = id;
   });
 
-  const activeLegKey = state.editTarget.leg;
-  renderList(els.legList, legs, state.draft[activeLegKey], (id) => {
-    const leg = state.masterData.byId[id];
-    if (leg?.slot === "両脚占有") {
-      state.draft.rightLeg = id;
-      state.draft.leftLeg = id;
-    } else {
-      const currentOther = state.masterData.byId[activeLegKey === "rightLeg" ? state.draft.leftLeg : state.draft.rightLeg];
-      state.draft[activeLegKey] = id;
-      if (currentOther?.slot === "両脚占有") {
-        const fallbackLeg = legs.find((x) => x.slot !== "両脚占有")?.id || id;
-        state.draft.rightLeg = fallbackLeg;
-        state.draft.leftLeg = fallbackLeg;
-        state.draft[activeLegKey] = id;
-      }
-    }
+  renderList(els.rightLegList, legs, state.draft.rightLeg, (id) => {
+    handleLegPick("rightLeg", id, legs);
+  });
+  renderList(els.leftLegList, legs, state.draft.leftLeg, (id) => {
+    handleLegPick("leftLeg", id, legs);
   });
 
-  const activeWeaponKey = state.editTarget.weapon;
-  renderList(els.weaponList, equips, state.draft[activeWeaponKey], (id) => {
-    state.draft[activeWeaponKey] = state.draft[activeWeaponKey] === id ? "" : id;
+  renderList(els.rightWeaponList, equips, state.draft.rightWeapon, (id) => {
+    state.draft.rightWeapon = state.draft.rightWeapon === id ? "" : id;
+  });
+  renderList(els.leftWeaponList, equips, state.draft.leftWeapon, (id) => {
+    state.draft.leftWeapon = state.draft.leftWeapon === id ? "" : id;
   });
 
-  renderSideSummaries();
   renderPreview();
   renderSavedBuilds();
 }
@@ -402,21 +380,6 @@ function bindEvents() {
   els.applyPresetBtn?.addEventListener("click", () => {
     if (!state.masterOk || !els.presetSelect) return;
     applyPresetById(els.presetSelect.value);
-  });
-
-  els.armTargetSelect?.addEventListener("change", (e) => {
-    state.editTarget.arm = e.target.value;
-    if (state.masterOk) renderAll();
-  });
-
-  els.legTargetSelect?.addEventListener("change", (e) => {
-    state.editTarget.leg = e.target.value;
-    if (state.masterOk) renderAll();
-  });
-
-  els.weaponTargetSelect?.addEventListener("change", (e) => {
-    state.editTarget.weapon = e.target.value;
-    if (state.masterOk) renderAll();
   });
 
   els.saveBuildBtn?.addEventListener("click", () => {
