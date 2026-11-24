@@ -223,7 +223,9 @@ const els = {
   fighter1Card: document.getElementById("fighter1-card"),
   fighter2Card: document.getElementById("fighter2-card"),
   startBattleBtn: document.getElementById("start-battle-btn"),
+  startBattle10Btn: document.getElementById("start-battle-10-btn"),
   randomBattleBtn: document.getElementById("random-battle-btn"),
+  randomBattle10Btn: document.getElementById("random-battle-10-btn"),
   battleBanner: document.getElementById("battle-banner"),
   battleLog: document.getElementById("battle-log")
 };
@@ -239,7 +241,9 @@ function escapeHtml(str) {
 function updateBattleButtonsState() {
   if (!state.masterOk || !state.masterData) {
     if (els.startBattleBtn) els.startBattleBtn.disabled = true;
+    if (els.startBattle10Btn) els.startBattle10Btn.disabled = true;
     if (els.randomBattleBtn) els.randomBattleBtn.disabled = true;
+    if (els.randomBattle10Btn) els.randomBattle10Btn.disabled = true;
     return;
   }
 
@@ -253,12 +257,18 @@ function updateBattleButtonsState() {
   if (els.startBattleBtn) {
     els.startBattleBtn.disabled = !canStart;
   }
+  if (els.startBattle10Btn) {
+    els.startBattle10Btn.disabled = !canStart;
+  }
 
   const legalCount = state.builds.filter(
     (b) => validateBuildRarityLimits(b, state.masterData).ok
   ).length;
   if (els.randomBattleBtn) {
     els.randomBattleBtn.disabled = legalCount < 2;
+  }
+  if (els.randomBattle10Btn) {
+    els.randomBattle10Btn.disabled = legalCount < 2;
   }
 }
 
@@ -267,7 +277,9 @@ function setArenaControlsLocked(locked) {
   if (els.fighter2Select) els.fighter2Select.disabled = locked;
   if (locked) {
     if (els.startBattleBtn) els.startBattleBtn.disabled = true;
+    if (els.startBattle10Btn) els.startBattle10Btn.disabled = true;
     if (els.randomBattleBtn) els.randomBattleBtn.disabled = true;
+    if (els.randomBattle10Btn) els.randomBattle10Btn.disabled = true;
   } else {
     updateBattleButtonsState();
   }
@@ -462,6 +474,27 @@ function renderBattleResult(result) {
   }
 }
 
+function renderTenBattleResult({ title, scoreLine, summaryLines }) {
+  state.lastWinnerSide = null;
+  applyFighterCardWinnerStyle(els.fighter1Card, false);
+  applyFighterCardWinnerStyle(els.fighter2Card, false);
+
+  if (els.battleBanner) {
+    els.battleBanner.style.display = "block";
+    els.battleBanner.innerHTML = `
+      <div style="font-size:1.05rem;font-weight:700;">${escapeHtml(title)}</div>
+      <div style="font-size:0.95rem;font-weight:700;margin-top:4px;line-height:1.45;">${escapeHtml(scoreLine)}</div>
+    `;
+  }
+
+  if (els.battleLog) {
+    els.battleLog.style.display = "block";
+    els.battleLog.innerHTML = summaryLines
+      .map((line) => `<div class="log-line is-result" style="white-space:normal;line-height:1.55;">${escapeHtml(line)}</div>`)
+      .join("");
+  }
+}
+
 function syncBuildSelectors() {
   if (!state.masterOk || !state.masterData) {
     if (els.fighter1Select) els.fighter1Select.innerHTML = "";
@@ -506,12 +539,8 @@ function syncBuildSelectors() {
   updateBattleButtonsState();
 }
 
-function handleStartBattle() {
-  if (!state.masterOk || !state.masterData) return;
-  const f1 = state.builds.find((b) => b.id === state.fighter1Id) || state.builds[0];
-  const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
-  if (!f1 || !f2) return;
-
+function validatePairForBattle(f1, f2) {
+  if (!f1 || !f2) return false;
   const check1 = validateBuildRarityLimits(f1, state.masterData);
   const check2 = validateBuildRarityLimits(f2, state.masterData);
   if (!check1.ok || !check2.ok) {
@@ -521,11 +550,63 @@ function handleStartBattle() {
     ].filter(Boolean);
     showToast(msgs.join(" | ") || "レアリティ制限違反の機体は出撃できません。");
     updateBattleButtonsState();
-    return;
+    return false;
   }
+  return true;
+}
+
+function handleStartBattle() {
+  if (!state.masterOk || !state.masterData) return;
+  const f1 = state.builds.find((b) => b.id === state.fighter1Id) || state.builds[0];
+  const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
+  if (!validatePairForBattle(f1, f2)) return;
 
   const result = runAutoBattle(f1, f2, state.masterData);
   renderBattleResult(result);
+}
+
+function handleStartBattle10() {
+  if (!state.masterOk || !state.masterData) return;
+  const f1 = state.builds.find((b) => b.id === state.fighter1Id) || state.builds[0];
+  const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
+  if (!validatePairForBattle(f1, f2)) return;
+
+  const name1 = f1.name || "機体1";
+  const name2 = f2.name || "機体2";
+  let wins1 = 0;
+  let wins2 = 0;
+  let draws = 0;
+  const summaryLines = [];
+
+  for (let i = 1; i <= 10; i++) {
+    const res = runAutoBattle(f1, f2, state.masterData);
+    if (res.winnerSide === "fighter1") {
+      wins1 += 1;
+      summaryLines.push(`${i}戦目：${name1} の勝利`);
+    } else if (res.winnerSide === "fighter2") {
+      wins2 += 1;
+      summaryLines.push(`${i}戦目：${name2} の勝利`);
+    } else {
+      draws += 1;
+      const reason = res.decisionReason ? `（${res.decisionReason}）` : "";
+      summaryLines.push(`${i}戦目：引き分け${reason}`);
+    }
+  }
+
+  renderTenBattleResult({
+    title: `${name1} vs ${name2}（10連戦）`,
+    scoreLine: `${name1}：${wins1}勝 ／ ${name2}：${wins2}勝（引分：${draws}回）`,
+    summaryLines
+  });
+}
+
+function pickRandomLegalPair(legalBuilds) {
+  const idx1 = Math.floor(Math.random() * legalBuilds.length);
+  let idx2 = Math.floor(Math.random() * legalBuilds.length);
+  if (legalBuilds.length > 1 && idx2 === idx1) {
+    idx2 = (idx1 + 1) % legalBuilds.length;
+  }
+  return [legalBuilds[idx1], legalBuilds[idx2]];
 }
 
 function handleRandomBattle() {
@@ -539,16 +620,63 @@ function handleRandomBattle() {
     return;
   }
 
-  const idx1 = Math.floor(Math.random() * legalBuilds.length);
-  let idx2 = Math.floor(Math.random() * legalBuilds.length);
-  if (legalBuilds.length > 1 && idx2 === idx1) {
-    idx2 = (idx1 + 1) % legalBuilds.length;
-  }
-  state.fighter1Id = legalBuilds[idx1].id;
-  state.fighter2Id = legalBuilds[idx2].id;
+  const [b1, b2] = pickRandomLegalPair(legalBuilds);
+  state.fighter1Id = b1.id;
+  state.fighter2Id = b2.id;
   state.lastWinnerSide = null;
   syncBuildSelectors();
   handleStartBattle();
+}
+
+function handleRandomBattle10() {
+  if (!state.masterOk || !state.masterData || state.builds.length === 0) return;
+  const legalBuilds = state.builds.filter(
+    (b) => validateBuildRarityLimits(b, state.masterData).ok
+  );
+  if (legalBuilds.length < 2) {
+    showToast("出撃可能な機体（レジェンド1/レア2以内）が2機以上必要です。");
+    updateBattleButtonsState();
+    return;
+  }
+
+  const winCounts = new Map();
+  let draws = 0;
+  const summaryLines = [];
+  let lastPair = null;
+
+  for (let i = 1; i <= 10; i++) {
+    const [b1, b2] = pickRandomLegalPair(legalBuilds);
+    lastPair = [b1, b2];
+    const name1 = b1.name || "機体1";
+    const name2 = b2.name || "機体2";
+    const res = runAutoBattle(b1, b2, state.masterData);
+
+    if (res.winnerSide === "fighter1") {
+      winCounts.set(name1, (winCounts.get(name1) || 0) + 1);
+      summaryLines.push(`${i}戦目：${name1} vs ${name2} → ${name1} の勝利`);
+    } else if (res.winnerSide === "fighter2") {
+      winCounts.set(name2, (winCounts.get(name2) || 0) + 1);
+      summaryLines.push(`${i}戦目：${name1} vs ${name2} → ${name2} の勝利`);
+    } else {
+      draws += 1;
+      summaryLines.push(`${i}戦目：${name1} vs ${name2} → 引き分け`);
+    }
+  }
+
+  if (lastPair) {
+    state.fighter1Id = lastPair[0].id;
+    state.fighter2Id = lastPair[1].id;
+    syncBuildSelectors();
+  }
+
+  const scoreParts = Array.from(winCounts.entries()).map(([name, cnt]) => `${name}：${cnt}勝`);
+  scoreParts.push(`引分：${draws}回`);
+
+  renderTenBattleResult({
+    title: "ランダム対戦×10（全10戦）",
+    scoreLine: scoreParts.join(" ／ "),
+    summaryLines
+  });
 }
 
 async function applyMasterLoadResult(res) {
@@ -582,7 +710,9 @@ function bindEvents() {
   });
 
   els.startBattleBtn?.addEventListener("click", handleStartBattle);
+  els.startBattle10Btn?.addEventListener("click", handleStartBattle10);
   els.randomBattleBtn?.addEventListener("click", handleRandomBattle);
+  els.randomBattle10Btn?.addEventListener("click", handleRandomBattle10);
 
   els.reloadDataBtn?.addEventListener("click", async () => {
     const res = await loadGolemMasterData();
