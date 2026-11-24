@@ -139,9 +139,12 @@ function renderBattleResult(result) {
     els.battleLog.style.display = "block";
     const lines = Array.isArray(result.logs) ? result.logs : [];
     els.battleLog.innerHTML = lines
-      .map((line) => `<div class="log-line">${escapeHtml(line)}</div>`)
+      .map((line) => {
+        const isTurn = String(line).startsWith("--- ターン");
+        const cls = isTurn ? "log-line is-turn-divider" : "log-line";
+        return `<div class="${cls}">${escapeHtml(line)}</div>`;
+      })
       .join("");
-    els.battleLog.scrollTop = 0;
   }
 }
 
