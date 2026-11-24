@@ -9,17 +9,19 @@ import {
 
 const state = {
   masterData: null,
+  masterOk: false,
   draft: {
     id: null,
-    name: "新規ゴーレム試作機",
-    coreId: "core_balanced",
-    parts: { arm: "arm_boulder", leg: "leg_strider", chip: "chip_precision" },
+    name: "",
+    coreId: "",
+    parts: { arm: "", leg: "", chip: "" },
     aiPolicy: "balanced"
   }
 };
 
 const els = {
   dataStatus: document.getElementById("data-status"),
+  masterError: document.getElementById("master-error"),
   reloadDataBtn: document.getElementById("reload-data-btn"),
   golemName: document.getElementById("golem-name"),
   aiPolicy: document.getElementById("ai-policy"),
@@ -47,7 +49,28 @@ function formatMods(mods = {}) {
 
 function renderStatus(statusInfo) {
   els.dataStatus.textContent = statusInfo.message;
-  els.dataStatus.classList.toggle("is-fallback", statusInfo.source !== "sheet");
+  els.dataStatus.classList.toggle("is-fallback", !statusInfo.ok);
+  if (!statusInfo.ok) {
+    els.masterError.style.display = "block";
+    els.masterError.textContent = statusInfo.message;
+  } else {
+    els.masterError.style.display = "none";
+    els.masterError.textContent = "";
+  }
+}
+
+function clearBlankBuilder() {
+  els.coreList.innerHTML = "";
+  els.armList.innerHTML = "";
+  els.legList.innerHTML = "";
+  els.chipList.innerHTML = "";
+  els.presetSelect.innerHTML = "";
+  els.costSummary.innerHTML = "";
+  els.previewCard.innerHTML = "";
+  els.savedList.innerHTML = "";
+  els.applyPresetBtn.disabled = true;
+  els.saveBuildBtn.disabled = true;
+  els.saveAsNewBtn.disabled = true;
 }
 
 function renderSelectors() {
@@ -60,6 +83,7 @@ function renderSelectors() {
   els.presetSelect.innerHTML = presets
     .map((pr) => `<option value="${pr.id}">${pr.name}</option>`)
     .join("");
+  els.applyPresetBtn.disabled = presets.length === 0;
 }
 
 function renderCores() {
@@ -160,7 +184,7 @@ function renderPreview() {
 function renderSavedBuilds() {
   const saved = loadSavedBuilds();
   if (saved.length === 0) {
-    els.savedList.innerHTML = `<p class="muted">保存済みカスタムゴーレムはまだありません。ビルドを作成して保存すると、ゴーレムアリーナで選択できます。</p>`;
+    els.savedList.innerHTML = `<p class="muted">保存済みカスタムゴーレムはまだありません。</p>`;
     return;
   }
 
@@ -212,6 +236,18 @@ function escapeHtml(str) {
 }
 
 function renderAll() {
+  if (!state.masterOk || !state.masterData) {
+    clearBlankBuilder();
+    return;
+  }
+  if (!state.draft.coreId && state.masterData.cores[0]) {
+    state.draft.coreId = state.masterData.cores[0].id;
+  }
+  for (const slot of ["arm", "leg", "chip"]) {
+    if (!state.draft.parts[slot] && state.masterData.parts[slot]?.[0]) {
+      state.draft.parts[slot] = state.masterData.parts[slot][0].id;
+    }
+  }
   renderSelectors();
   renderCores();
   renderPartSlot("arm", els.armList);
@@ -221,21 +257,27 @@ function renderAll() {
   renderSavedBuilds();
 }
 
+async function applyMasterLoadResult(res) {
+  state.masterData = res.data;
+  state.masterOk = Boolean(res.ok);
+  renderStatus(res);
+  renderAll();
+}
+
 function bindEvents() {
   els.golemName.addEventListener("input", (e) => {
     state.draft.name = e.target.value;
-    renderPreview();
+    if (state.masterOk) renderPreview();
   });
 
   els.aiPolicy.addEventListener("change", (e) => {
     state.draft.aiPolicy = e.target.value;
-    renderPreview();
+    if (state.masterOk) renderPreview();
   });
 
   els.applyPresetBtn.addEventListener("click", () => {
-    const preset = (state.masterData.presets || []).find(
-      (p) => p.id === els.presetSelect.value
-    );
+    if (!state.masterOk) return;
+    const preset = (state.masterData.presets || []).find((p) => p.id === els.presetSelect.value);
     if (!preset) return;
     state.draft = {
       id: null,
@@ -250,6 +292,7 @@ function bindEvents() {
   });
 
   els.saveBuildBtn.addEventListener("click", () => {
+    if (!state.masterOk) return;
     const built = calculateGolemBuild(state.draft, state.masterData);
     if (built.isOverCost) return;
     const saved = saveCustomBuild({ ...state.draft, name: built.name });
@@ -259,6 +302,7 @@ function bindEvents() {
   });
 
   els.saveAsNewBtn.addEventListener("click", () => {
+    if (!state.masterOk) return;
     const built = calculateGolemBuild(state.draft, state.masterData);
     if (built.isOverCost) return;
     const saved = saveCustomBuild({
@@ -273,6 +317,7 @@ function bindEvents() {
   });
 
   els.exportJsonBtn.addEventListener("click", () => {
+    if (!state.masterOk) return;
     const built = calculateGolemBuild(state.draft, state.masterData);
     const payload = {
       name: built.name,
@@ -284,17 +329,19 @@ function bindEvents() {
     };
     navigator.clipboard?.writeText(JSON.stringify(payload, null, 2)).then(
       () => showToast("ビルドJSONをクリップボードにコピーしました"),
-      () => showToast("JSONを生成しました（コンソールを確認）")
+      () => showToast("JSONを生成しました")
     );
-    console.log("Exported Golem JSON:", payload);
   });
 
   els.reloadDataBtn.addEventListener("click", async () => {
     const res = await loadGolemMasterData();
-    state.masterData = res.data;
-    renderStatus(res);
-    renderAll();
+    await applyMasterLoadResult(res);
     showToast(res.message);
+  });
+
+  window.addEventListener("offline", async () => {
+    const res = await loadGolemMasterData();
+    await applyMasterLoadResult(res);
   });
 }
 
@@ -302,9 +349,7 @@ async function init() {
   els.golemName.value = state.draft.name;
   bindEvents();
   const res = await loadGolemMasterData();
-  state.masterData = res.data;
-  renderStatus(res);
-  renderAll();
+  await applyMasterLoadResult(res);
 }
 
 init();

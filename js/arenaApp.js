@@ -4,6 +4,7 @@ import { loadSavedBuilds, showToast } from "./ui/storage.js";
 
 const state = {
   masterData: null,
+  masterOk: false,
   fighters: [],
   selectedA: null,
   selectedB: null,
@@ -12,6 +13,7 @@ const state = {
 
 const els = {
   dataStatus: document.getElementById("data-status"),
+  masterError: document.getElementById("master-error"),
   reloadDataBtn: document.getElementById("reload-data-btn"),
   selectA: document.getElementById("fighter-a-select"),
   selectB: document.getElementById("fighter-b-select"),
@@ -37,12 +39,33 @@ function buildFighterPool(masterData) {
 
 function renderStatus(statusInfo) {
   els.dataStatus.textContent = statusInfo.message;
-  els.dataStatus.classList.toggle("is-fallback", statusInfo.source !== "sheet");
+  els.dataStatus.classList.toggle("is-fallback", !statusInfo.ok);
+  if (!statusInfo.ok) {
+    els.masterError.style.display = "block";
+    els.masterError.textContent = statusInfo.message;
+  } else {
+    els.masterError.style.display = "none";
+    els.masterError.textContent = "";
+  }
+}
+
+function clearBlankArena(message = "") {
+  state.fighters = [];
+  state.selectedA = null;
+  state.selectedB = null;
+  els.selectA.innerHTML = "";
+  els.selectB.innerHTML = "";
+  els.cardA.innerHTML = "";
+  els.cardB.innerHTML = "";
+  els.battleSummary.innerHTML = "";
+  els.battleLog.textContent = message;
+  els.startBattleBtn.disabled = true;
+  els.randomMatchBtn.disabled = true;
 }
 
 function renderFighterCard(container, fighter, currentHp = null) {
   if (!fighter) {
-    container.innerHTML = `<p class="muted">機体を選択してください</p>`;
+    container.innerHTML = "";
     return;
   }
   const hp = currentHp !== null ? currentHp : fighter.stats.hp;
@@ -91,6 +114,8 @@ function renderSelectOptions() {
 
   renderFighterCard(els.cardA, state.selectedA);
   renderFighterCard(els.cardB, state.selectedB);
+  els.startBattleBtn.disabled = !(state.selectedA && state.selectedB);
+  els.randomMatchBtn.disabled = state.fighters.length < 2;
 }
 
 function renderBattleResult(result) {
@@ -128,10 +153,26 @@ function escapeHtml(str) {
 }
 
 function runBattle() {
-  if (!state.selectedA || !state.selectedB) return;
+  if (!state.masterOk || !state.selectedA || !state.selectedB) return;
   const result = simulateBattle(state.selectedA, state.selectedB);
   state.lastResult = result;
   renderBattleResult(result);
+}
+
+async function applyMasterLoadResult(res) {
+  state.masterData = res.data;
+  state.masterOk = Boolean(res.ok);
+  renderStatus(res);
+
+  if (!state.masterOk) {
+    clearBlankArena(res.message);
+    return;
+  }
+
+  state.fighters = buildFighterPool(state.masterData);
+  state.selectedA = state.fighters[0] || null;
+  state.selectedB = state.fighters[1] || state.fighters[0] || null;
+  renderSelectOptions();
 }
 
 function bindEvents() {
@@ -148,7 +189,7 @@ function bindEvents() {
   els.startBattleBtn.addEventListener("click", runBattle);
 
   els.randomMatchBtn.addEventListener("click", () => {
-    if (state.fighters.length < 2) return;
+    if (!state.masterOk || state.fighters.length < 2) return;
     const idxA = Math.floor(Math.random() * state.fighters.length);
     let idxB = Math.floor(Math.random() * (state.fighters.length - 1));
     if (idxB >= idxA) idxB += 1;
@@ -161,23 +202,20 @@ function bindEvents() {
 
   els.reloadDataBtn.addEventListener("click", async () => {
     const res = await loadGolemMasterData();
-    state.masterData = res.data;
-    state.fighters = buildFighterPool(state.masterData);
-    renderStatus(res);
-    renderSelectOptions();
+    await applyMasterLoadResult(res);
     showToast(res.message);
+  });
+
+  window.addEventListener("offline", async () => {
+    const res = await loadGolemMasterData();
+    await applyMasterLoadResult(res);
   });
 }
 
 async function init() {
   bindEvents();
   const res = await loadGolemMasterData();
-  state.masterData = res.data;
-  state.fighters = buildFighterPool(state.masterData);
-  state.selectedA = state.fighters[0] || null;
-  state.selectedB = state.fighters[1] || state.fighters[0] || null;
-  renderStatus(res);
-  renderSelectOptions();
+  await applyMasterLoadResult(res);
 }
 
 init();

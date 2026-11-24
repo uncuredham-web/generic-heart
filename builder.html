@@ -17,6 +17,7 @@
         </div>
       </div>
       <nav class="nav-links" aria-label="画面切り替え">
+        <a class="nav-link" href="./index.html">ポータル</a>
         <a class="nav-link is-active" href="./builder.html">ゴーレムビルダー</a>
         <a class="nav-link" href="./arena.html">ゴーレムアリーナ</a>
       </nav>
@@ -26,12 +27,14 @@
   <main class="page-container">
     <div class="status-bar">
       <div>
-        <span id="data-status" class="status-badge is-fallback">データ初期化中...</span>
+        <span id="data-status" class="status-badge is-fallback">「ジェネリックハート_パーツマスター_Ver1.1」読込待機中...</span>
       </div>
       <button id="reload-data-btn" type="button" class="btn btn-secondary btn-sm">
         マスターデータ再読込
       </button>
     </div>
+
+    <div id="master-error" class="panel" style="display:none; border-color:var(--danger); color:#fca5a5; margin-bottom:20px;" role="alert"></div>
 
     <div class="builder-layout">
       <section class="panel">
