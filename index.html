@@ -5,183 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GENERIC HEART | ゴーレムビルダー＆アリーナ</title>
   <link rel="stylesheet" href="./css/common.css" />
-  <style>
-    .hero-panel {
-      position: relative;
-      overflow: hidden;
-      padding: 36px 28px;
-      border-radius: var(--radius-lg);
-      background:
-        radial-gradient(circle at 85% 15%, rgba(168, 85, 247, 0.22), transparent 45%),
-        radial-gradient(circle at 15% 85%, rgba(56, 189, 248, 0.2), transparent 45%),
-        var(--bg-panel);
-      border: 1px solid var(--border-subtle);
-      box-shadow: var(--shadow-card);
-      margin-bottom: 24px;
-    }
-
-    .hero-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 4px 12px;
-      border-radius: 999px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: var(--accent-primary);
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.35);
-      margin-bottom: 14px;
-    }
-
-    .hero-title {
-      margin: 0 0 10px;
-      font-size: clamp(1.6rem, 3.5vw, 2.35rem);
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      line-height: 1.25;
-    }
-
-    .hero-desc {
-      margin: 0;
-      max-width: 720px;
-      color: var(--text-muted);
-      font-size: 0.98rem;
-    }
-
-    .portal-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 20px;
-      margin-bottom: 24px;
-    }
-
-    @media (max-width: 820px) {
-      .portal-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .portal-card {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 24px;
-      box-shadow: var(--shadow-card);
-      transition: transform 0.16s ease, border-color 0.16s ease;
-    }
-
-    .portal-card:hover {
-      transform: translateY(-2px);
-      border-color: var(--accent-primary);
-    }
-
-    .portal-card.is-arena:hover {
-      border-color: var(--accent-secondary);
-    }
-
-    .portal-card-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-
-    .portal-card-title {
-      margin: 0;
-      font-size: 1.3rem;
-      font-weight: 800;
-    }
-
-    .portal-features {
-      list-style: none;
-      padding: 0;
-      margin: 14px 0 22px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      color: #cbd5e1;
-      font-size: 0.9rem;
-    }
-
-    .portal-features li::before {
-      content: "▸ ";
-      color: var(--accent-primary);
-      font-weight: 700;
-    }
-
-    .portal-card.is-arena .portal-features li::before {
-      color: #d8b4fe;
-    }
-
-    .btn-arena {
-      background: var(--accent-secondary);
-      color: #ffffff;
-    }
-
-    .btn-arena:hover:not(:disabled) {
-      background: #9333ea;
-    }
-
-    .info-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 20px;
-    }
-
-    @media (max-width: 860px) {
-      .info-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .guide-list {
-      margin: 0;
-      padding-left: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      color: #cbd5e1;
-      font-size: 0.9rem;
-    }
-
-    .module-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-
-    .module-table th,
-    .module-table td {
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--border-subtle);
-      text-align: left;
-    }
-
-    .module-table th {
-      color: var(--text-muted);
-      font-weight: 700;
-    }
-
-    .module-table tr:last-child td {
-      border-bottom: none;
-    }
-
-    .quick-footer {
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border-subtle);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-  </style>
+  <link rel="stylesheet" href="./css/index.css" />
 </head>
 <body>
   <header class="site-header">
@@ -189,7 +13,7 @@
       <div class="brand-area">
         <div>
           <h1 class="brand-title">GENERIC HEART</h1>
-          <p class="brand-subtitle">ゴーレムビルダー＆ゴーレムアリーナ テストポータル</p>
+          <p class="brand-subtitle">ゴーレムビルダー＆ゴーレムアリーナ ポータル</p>
         </div>
       </div>
       <nav class="nav-links" aria-label="画面切り替え">
@@ -202,11 +26,11 @@
 
   <main class="page-container">
     <section class="hero-panel">
-      <div class="hero-eyebrow">TEST RELEASE / MODULAR ARCHITECTURE</div>
-      <h2 class="hero-title">機体を組み上げ、アリーナで戦術を検証する</h2>
+      <div class="hero-eyebrow">PARTS MASTER VER1.1 / MODULAR ARCHITECTURE</div>
+      <h2 class="hero-title">機体を組み上げ、アリーナで1on1対戦を検証する</h2>
       <p class="hero-desc">
-        「ゴーレムビルダー」でコア・パーツ・AI戦術を設計して保存し、「ゴーレムアリーナ」で1vs1オートバトルの挙動やバランスを試せるテスト環境です。
-        CSS・マスターデータ・バトルルールを分離しているため、調整やテスト共有もしやすい構成になっています。
+        「ジェネリックハート_パーツマスター_Ver1.1」をもとに機体を設計し、「ゴーレムアリーナ」で1on1オートバトルの挙動やバランスを検証できます。
+        スタイル・マスターデータ・バトルルールを分離した構成になっています。
       </p>
     </section>
 
@@ -218,12 +42,12 @@
             <span class="tag">DESIGN &amp; SAVE</span>
           </div>
           <p class="muted" style="margin:0;">
-            コスト上限の範囲内でコア・腕・脚・チップとAI戦術を組み合わせ、機体ステータスと習得スキルを確認できます。
+            胴体・頭部・右腕・左腕・右脚・左脚・左右の武装と「さくせん」を組み合わせて機体ステータスを確認できます。
           </p>
           <ul class="portal-features">
-            <li>プリセット機体からのカスタマイズ読込に対応</li>
-            <li>ブラウザ保存（localStorage）＆ ビルドJSONコピー</li>
-            <li>スプレッドシートCSV読込／予備データ切替に対応</li>
+            <li>レアリティバッジ・色分け表示＆両腕／両脚占有パーツ連動制御</li>
+            <li>コモン・アンコモン限定プリセットの反映＆JSONコピー</li>
+            <li>ブラウザ保存（localStorage）＆ パーツマスターCSV読込</li>
           </ul>
         </div>
         <div>
@@ -235,15 +59,15 @@
         <div>
           <div class="portal-card-top">
             <h3 class="portal-card-title">ゴーレムアリーナ</h3>
-            <span class="tag">AUTO BATTLE</span>
+            <span class="tag">1ON1 AUTO BATTLE</span>
           </div>
           <p class="muted" style="margin:0;">
-            プリセット機体や自作ゴーレム同士をぶつけて、ターンごとの行動・スキル・会心・勝敗ログを検証できます。
+            3カラム構成で機体1・機体2を選び、ターンごとの行動・命中補正・勝敗ログをページスクロールで閲覧できます。
           </p>
           <ul class="portal-features">
-            <li>A軍／B軍の任意マッチアップ＆ランダム対戦</li>
-            <li>HPバー変化とターン別バトルログを表示</li>
-            <li>バランス型・猛攻型・堅守型AIの挙動を確認</li>
+            <li>機体1／機体2の任意対戦＆ランダム対戦（保存機体と同期）</li>
+            <li>左右武器装備時の二刀流（2回攻撃・命中率-10%補正）に対応</li>
+            <li>左右機体カードの追従表示＆読みやすい2段改行ログ</li>
           </ul>
         </div>
         <div>
@@ -254,11 +78,11 @@
 
     <section class="info-grid">
       <div class="panel">
-        <h3 class="panel-title">テストユーザー向けクイックガイド</h3>
+        <h3 class="panel-title">クイックガイド</h3>
         <ol class="guide-list">
-          <li><strong>ビルダーで機体を作成</strong>：名前やAI戦術、各パーツを選び、コスト上限内で「保存する」を押します。</li>
-          <li><strong>アリーナで対戦テスト</strong>：保存した機体はアリーナの選択肢に自動反映されます。A軍・B軍を選んで「バトル開始」を押してください。</li>
-          <li><strong>別環境への共有</strong>：ビルダーの「JSONコピー」でビルド情報をコピーして共有できます。</li>
+          <li><strong>ビルダーで機体を作成</strong>：機体名や「さくせん」、各部位パーツを選び、「保存する」を押します。</li>
+          <li><strong>アリーナで対戦テスト</strong>：保存・削除した機体はアリーナの選択肢に反映されます。機体1・機体2を選んで「バトル開始」を押してください。</li>
+          <li><strong>ビルドデータの共有</strong>：ビルダーの「JSONコピー」でビルド情報をコピーして共有できます。</li>
         </ol>
         <div class="quick-footer">
           <span class="muted">※ カスタム機体は各ブラウザの localStorage に保存されます。</span>
@@ -267,7 +91,7 @@
       </div>
 
       <div class="panel">
-        <h3 class="panel-title">メンテナンス用モジュール一覧</h3>
+        <h3 class="panel-title">モジュール一覧</h3>
         <table class="module-table">
           <thead>
             <tr>
@@ -278,14 +102,14 @@
           <tbody>
             <tr>
               <td>共通／画面別CSS</td>
-              <td><code>css/common.css</code>, <code>builder.css</code>, <code>arena.css</code></td>
+              <td><code>css/common.css</code>, <code>index.css</code>, <code>builder.css</code>, <code>arena.css</code></td>
             </tr>
             <tr>
               <td>マスター／CSV読込</td>
               <td><code>js/data/golemData.js</code></td>
             </tr>
             <tr>
-              <td>バトルルール／AI</td>
+              <td>バトルルール</td>
               <td><code>js/rules/battleRules.js</code></td>
             </tr>
             <tr>
