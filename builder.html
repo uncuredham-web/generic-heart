@@ -59,16 +59,49 @@
           </div>
         </div>
 
-        <h2 class="panel-title" style="margin-top:20px;">2. 胴体（核）・頭部</h2>
-        <div id="body-head-list" class="part-list"></div>
+        <h2 class="panel-title" style="margin-top:20px;">2. 胴体（核）</h2>
+        <div id="core-list" class="part-list"></div>
 
-        <h2 class="panel-title" style="margin-top:20px;">3. 腕部（右腕・左腕）</h2>
+        <h2 class="panel-title" style="margin-top:20px;">3. 頭部</h2>
+        <div id="head-list" class="part-list"></div>
+
+        <h2 class="panel-title" style="margin-top:20px;">4. 腕部</h2>
+        <div class="form-row" style="margin-bottom:10px;align-items:end;">
+          <div>
+            <label for="arm-target-select">編集する腕</label>
+            <select id="arm-target-select">
+              <option value="rightArm">右腕</option>
+              <option value="leftArm">左腕</option>
+            </select>
+          </div>
+          <div id="arm-current-summary" class="muted"></div>
+        </div>
         <div id="arm-list" class="part-list"></div>
 
-        <h2 class="panel-title" style="margin-top:20px;">4. 脚部（右脚・左脚 / 脚部ユニット）</h2>
+        <h2 class="panel-title" style="margin-top:20px;">5. 脚部</h2>
+        <div class="form-row" style="margin-bottom:10px;align-items:end;">
+          <div>
+            <label for="leg-target-select">編集する脚</label>
+            <select id="leg-target-select">
+              <option value="rightLeg">右脚</option>
+              <option value="leftLeg">左脚</option>
+            </select>
+          </div>
+          <div id="leg-current-summary" class="muted"></div>
+        </div>
         <div id="leg-list" class="part-list"></div>
 
-        <h2 class="panel-title" style="margin-top:20px;">5. 武器・シールド（右手・左手）</h2>
+        <h2 class="panel-title" style="margin-top:20px;">6. 武器・シールド</h2>
+        <div class="form-row" style="margin-bottom:10px;align-items:end;">
+          <div>
+            <label for="weapon-target-select">編集する手</label>
+            <select id="weapon-target-select">
+              <option value="rightWeapon">右手</option>
+              <option value="leftWeapon">左手</option>
+            </select>
+          </div>
+          <div id="weapon-current-summary" class="muted"></div>
+        </div>
         <div id="weapon-list" class="part-list"></div>
       </section>
 
@@ -90,6 +123,6 @@
     </div>
   </main>
 
-  <script type="module" src="./js/builderApp.js?v=3"></script>
+  <script type="module" src="./js/builderApp.js?v=4"></script>
 </body>
 </html>

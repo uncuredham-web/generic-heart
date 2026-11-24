@@ -56,6 +56,11 @@ const PRESETS = [
 const state = {
   masterData: null,
   masterOk: false,
+  editTarget: {
+    arm: "rightArm",
+    leg: "rightLeg",
+    weapon: "rightWeapon"
+  },
   draft: {
     id: null,
     name: "",
@@ -79,9 +84,16 @@ const els = {
   tacticSelect: document.getElementById("tactic-select"),
   presetSelect: document.getElementById("preset-select"),
   applyPresetBtn: document.getElementById("apply-preset-btn"),
-  bodyHeadList: document.getElementById("body-head-list"),
+  coreList: document.getElementById("core-list"),
+  headList: document.getElementById("head-list"),
+  armTargetSelect: document.getElementById("arm-target-select"),
+  armCurrentSummary: document.getElementById("arm-current-summary"),
   armList: document.getElementById("arm-list"),
+  legTargetSelect: document.getElementById("leg-target-select"),
+  legCurrentSummary: document.getElementById("leg-current-summary"),
   legList: document.getElementById("leg-list"),
+  weaponTargetSelect: document.getElementById("weapon-target-select"),
+  weaponCurrentSummary: document.getElementById("weapon-current-summary"),
   weaponList: document.getElementById("weapon-list"),
   previewCard: document.getElementById("preview-card"),
   saveBuildBtn: document.getElementById("save-build-btn"),
@@ -103,10 +115,14 @@ function renderStatus(statusInfo) {
 }
 
 function clearBlankBuilder() {
-  els.bodyHeadList.innerHTML = "";
+  els.coreList.innerHTML = "";
+  els.headList.innerHTML = "";
   els.armList.innerHTML = "";
   els.legList.innerHTML = "";
   els.weaponList.innerHTML = "";
+  if (els.armCurrentSummary) els.armCurrentSummary.textContent = "";
+  if (els.legCurrentSummary) els.legCurrentSummary.textContent = "";
+  if (els.weaponCurrentSummary) els.weaponCurrentSummary.textContent = "";
   if (els.presetSelect) els.presetSelect.innerHTML = "";
   els.previewCard.innerHTML = "";
   els.savedList.innerHTML = "";
@@ -150,6 +166,30 @@ function renderList(container, items, selectedId, onPick) {
       renderAll();
     });
   });
+}
+
+function renderSideSummaries() {
+  const { byId } = state.masterData;
+  const rArm = byId[state.draft.rightArm]?.name || "未選択";
+  const lArm = byId[state.draft.leftArm]?.name || "未選択";
+  if (els.armCurrentSummary) {
+    els.armCurrentSummary.textContent = `現在：右腕「${rArm}」／左腕「${lArm}」`;
+  }
+
+  const rLegObj = byId[state.draft.rightLeg];
+  const lLegObj = byId[state.draft.leftLeg];
+  const isDual = rLegObj?.slot === "両脚占有";
+  if (els.legCurrentSummary) {
+    els.legCurrentSummary.textContent = isDual
+      ? `現在：両脚占有「${rLegObj.name}」`
+      : `現在：右脚「${rLegObj?.name || "未選択"}」／左脚「${lLegObj?.name || "未選択"}」`;
+  }
+
+  const rWeap = byId[state.draft.rightWeapon]?.name || "なし";
+  const lWeap = byId[state.draft.leftWeapon]?.name || "なし";
+  if (els.weaponCurrentSummary) {
+    els.weaponCurrentSummary.textContent = `現在：右手「${rWeap}」／左手「${lWeap}」（再クリックで解除）`;
+  }
 }
 
 function renderPreview() {
@@ -296,23 +336,47 @@ function renderAll() {
   els.tacticSelect.innerHTML = TACTICS.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
   els.tacticSelect.value = state.draft.tactic || TACTICS[0];
 
-  renderList(els.bodyHeadList, [...cores, ...heads], state.draft.core, (id) => {
-    const picked = state.masterData.byId[id];
-    if (picked?.cat === "胴体") state.draft.core = id;
-    if (picked?.cat === "頭部") state.draft.head = id;
-  });
-  renderList(els.armList, arms, state.draft.rightArm, (id) => {
-    state.draft.rightArm = id;
-  });
-  renderList(els.legList, legs, state.draft.rightLeg, (id) => {
-    state.draft.rightLeg = id;
-    const leg = state.masterData.byId[id];
-    if (leg?.slot === "両脚占有") state.draft.leftLeg = id;
-  });
-  renderList(els.weaponList, equips, state.draft.rightWeapon, (id) => {
-    state.draft.rightWeapon = state.draft.rightWeapon === id ? "" : id;
+  if (els.armTargetSelect) els.armTargetSelect.value = state.editTarget.arm;
+  if (els.legTargetSelect) els.legTargetSelect.value = state.editTarget.leg;
+  if (els.weaponTargetSelect) els.weaponTargetSelect.value = state.editTarget.weapon;
+
+  renderList(els.coreList, cores, state.draft.core, (id) => {
+    state.draft.core = id;
   });
 
+  renderList(els.headList, heads, state.draft.head, (id) => {
+    state.draft.head = id;
+  });
+
+  const activeArmKey = state.editTarget.arm;
+  renderList(els.armList, arms, state.draft[activeArmKey], (id) => {
+    state.draft[activeArmKey] = id;
+  });
+
+  const activeLegKey = state.editTarget.leg;
+  renderList(els.legList, legs, state.draft[activeLegKey], (id) => {
+    const leg = state.masterData.byId[id];
+    if (leg?.slot === "両脚占有") {
+      state.draft.rightLeg = id;
+      state.draft.leftLeg = id;
+    } else {
+      const currentOther = state.masterData.byId[activeLegKey === "rightLeg" ? state.draft.leftLeg : state.draft.rightLeg];
+      state.draft[activeLegKey] = id;
+      if (currentOther?.slot === "両脚占有") {
+        const fallbackLeg = legs.find((x) => x.slot !== "両脚占有")?.id || id;
+        state.draft.rightLeg = fallbackLeg;
+        state.draft.leftLeg = fallbackLeg;
+        state.draft[activeLegKey] = id;
+      }
+    }
+  });
+
+  const activeWeaponKey = state.editTarget.weapon;
+  renderList(els.weaponList, equips, state.draft[activeWeaponKey], (id) => {
+    state.draft[activeWeaponKey] = state.draft[activeWeaponKey] === id ? "" : id;
+  });
+
+  renderSideSummaries();
   renderPreview();
   renderSavedBuilds();
 }
@@ -338,6 +402,21 @@ function bindEvents() {
   els.applyPresetBtn?.addEventListener("click", () => {
     if (!state.masterOk || !els.presetSelect) return;
     applyPresetById(els.presetSelect.value);
+  });
+
+  els.armTargetSelect?.addEventListener("change", (e) => {
+    state.editTarget.arm = e.target.value;
+    if (state.masterOk) renderAll();
+  });
+
+  els.legTargetSelect?.addEventListener("change", (e) => {
+    state.editTarget.leg = e.target.value;
+    if (state.masterOk) renderAll();
+  });
+
+  els.weaponTargetSelect?.addEventListener("change", (e) => {
+    state.editTarget.weapon = e.target.value;
+    if (state.masterOk) renderAll();
   });
 
   els.saveBuildBtn?.addEventListener("click", () => {
