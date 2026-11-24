@@ -29,8 +29,7 @@
       <div class="hero-eyebrow">PARTS MASTER VER1.1 / MODULAR ARCHITECTURE</div>
       <h2 class="hero-title">機体を組み上げ、アリーナで1on1対戦を検証する</h2>
       <p class="hero-desc">
-        「ジェネリックハート_パーツマスター_Ver1.1」をもとに機体を設計し、「ゴーレムアリーナ」で1on1オートバトルの挙動やバランスを検証できます。
-        スタイル・マスターデータ・バトルルールを分離した構成になっています。
+        「ジェネリックハート_パーツマスター_Ver1.1」をもとに機体を設計し、「ゴーレムアリーナ」で1on1オートバトルの挙動やバランス、10連戦の勝率などを検証できます。
       </p>
     </section>
 
@@ -42,12 +41,12 @@
             <span class="tag">DESIGN &amp; SAVE</span>
           </div>
           <p class="muted" style="margin:0;">
-            胴体・頭部・右腕・左腕・右脚・左脚・左右の武装と「さくせん」を組み合わせて機体ステータスを確認できます。
+            3カラム構成で保存機体・JSON取込、中央のパーツ選択、右側の追従プレビューを確認しながら機体を組み立てられます。
           </p>
           <ul class="portal-features">
-            <li>レアリティバッジ・色分け表示＆両腕／両脚占有パーツ連動制御</li>
-            <li>コモン・アンコモン限定プリセットの反映＆JSONコピー</li>
-            <li>ブラウザ保存（localStorage）＆ パーツマスターCSV読込</li>
+            <li>レジェンド1個／レア2個の制限バリデーション＆占有パーツ連動制御</li>
+            <li>コモン／アンコモン限定プリセット5体の反映＆ビルドJSON入出力</li>
+            <li>ブラウザ保存（localStorage）＆ パーツマスターCSV連携</li>
           </ul>
         </div>
         <div>
@@ -62,12 +61,12 @@
             <span class="tag">1ON1 AUTO BATTLE</span>
           </div>
           <p class="muted" style="margin:0;">
-            3カラム構成で機体1・機体2を選び、ターンごとの行動・命中補正・勝敗ログをページスクロールで閲覧できます。
+            プリセットや保存済み機体を選んで1on1オートバトルを実行し、詳細ログや10連戦の勝敗集計を確認できます。
           </p>
           <ul class="portal-features">
-            <li>機体1／機体2の任意対戦＆ランダム対戦（保存機体と同期）</li>
-            <li>左右武器装備時の二刀流（2回攻撃・命中率-10%補正）に対応</li>
-            <li>左右機体カードの追従表示＆読みやすい2段改行ログ</li>
+            <li>機体1／機体2の任意対戦＆ランダム対戦（保存機体・プリセット連動）</li>
+            <li>「バトル開始×10」「ランダム対戦×10」で勝数サマリーと10戦ログを表示</li>
+            <li>レアリティ制限違反ビルドの出撃ブロック＆勝利カードハイライト</li>
           </ul>
         </div>
         <div>
@@ -80,13 +79,12 @@
       <div class="panel">
         <h3 class="panel-title">クイックガイド</h3>
         <ol class="guide-list">
-          <li><strong>ビルダーで機体を作成</strong>：機体名や「さくせん」、各部位パーツを選び、「保存する」を押します。</li>
-          <li><strong>アリーナで対戦テスト</strong>：保存・削除した機体はアリーナの選択肢に反映されます。機体1・機体2を選んで「バトル開始」を押してください。</li>
-          <li><strong>ビルドデータの共有</strong>：ビルダーの「JSONコピー」でビルド情報をコピーして共有できます。</li>
+          <li><strong>ビルダーで機体を作成</strong>：機体名や「さくせん」、各部位パーツを選び、制限内であることを確認して「保存する」を押します。</li>
+          <li><strong>アリーナで対戦テスト</strong>：保存した機体やプリセットを選び、「バトル開始」または「×10」ボタンで対戦結果を検証できます。</li>
+          <li><strong>ビルドデータの共有</strong>：ビルダーの「JSONコピー」で出力したJSONを貼り付けると、別の画面や相手にも機体を渡せます。</li>
         </ol>
         <div class="quick-footer">
           <span class="muted">※ カスタム機体は各ブラウザの localStorage に保存されます。</span>
-          <a href="./data/sample_golem_master.csv" class="btn btn-secondary btn-sm">サンプルCSVを確認</a>
         </div>
       </div>
 
@@ -102,10 +100,10 @@
           <tbody>
             <tr>
               <td>共通／画面別CSS</td>
-              <td><code>css/common.css</code>, <code>index.css</code>, <code>builder.css</code>, <code>arena.css</code></td>
+              <td><code>css/common.css</code>, <code>css/index.css</code>, <code>css/builder.css</code>, <code>css/arena.css</code></td>
             </tr>
             <tr>
-              <td>マスター／CSV読込</td>
+              <td>マスター／プリセット</td>
               <td><code>js/data/golemData.js</code></td>
             </tr>
             <tr>
@@ -114,7 +112,7 @@
             </tr>
             <tr>
               <td>保存／画面制御</td>
-              <td><code>js/ui/storage.js</code>, <code>builderApp.js</code>, <code>arenaApp.js</code></td>
+              <td><code>js/ui/storage.js</code>, <code>js/builderApp.js</code>, <code>js/arenaApp_2.js</code></td>
             </tr>
           </tbody>
         </table>
@@ -123,3 +121,6 @@
   </main>
 </body>
 </html>
+```[cite: 13]
+
+※ `css/common.css` と `css/index.css` はそのまま使えます[cite: 14, 15]。もし文言や項目でさらに削りたい・足したいところがあれば教えてください！
