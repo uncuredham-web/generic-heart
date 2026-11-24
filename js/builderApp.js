@@ -33,7 +33,6 @@ const els = {
   golemName: document.getElementById("golem-name"),
   tacticSelect: document.getElementById("tactic-select"),
   presetSelect: document.getElementById("preset-select"),
-  applyPresetBtn: document.getElementById("apply-preset-btn"),
   bodyHeadList: document.getElementById("body-head-list"),
   armList: document.getElementById("arm-list"),
   legList: document.getElementById("leg-list"),
@@ -62,10 +61,9 @@ function clearBlankBuilder() {
   els.armList.innerHTML = "";
   els.legList.innerHTML = "";
   els.weaponList.innerHTML = "";
-  els.presetSelect.innerHTML = "";
+  if (els.presetSelect) els.presetSelect.innerHTML = "";
   els.previewCard.innerHTML = "";
   els.savedList.innerHTML = "";
-  els.applyPresetBtn.disabled = true;
   els.saveBuildBtn.disabled = true;
   els.saveAsNewBtn.disabled = true;
 }
