@@ -344,9 +344,15 @@ function normalizeDraftConstraints() {
   const rArmNow = byId[state.draft.rightArm];
   const lArmNow = byId[state.draft.leftArm];
   if (isIntegratedWeaponPart(rArmNow)) {
+    if (isDualWeaponPart(byId[state.draft.rightWeapon])) {
+      state.draft.leftWeapon = "";
+    }
     state.draft.rightWeapon = "";
   }
   if (isIntegratedWeaponPart(lArmNow)) {
+    if (isDualWeaponPart(byId[state.draft.leftWeapon])) {
+      state.draft.rightWeapon = "";
+    }
     state.draft.leftWeapon = "";
   }
 
@@ -490,9 +496,10 @@ function renderPreview() {
   const lWeap = byId[state.draft.leftWeapon] || null;
   if (!core || !head || !rArm || !lArm || !rLeg || !lLeg) return;
 
+  const isDualArm = isDualArmPart(rArm) || isDualArmPart(lArm);
   const isDualLeg = isDualLegPart(rLeg) || isDualLegPart(lLeg);
   const active = [core, head, rArm];
-  if (!isDualArmPart(rArm) && lArm) active.push(lArm);
+  if (!isDualArm && lArm) active.push(lArm);
   active.push(rLeg);
   if (!isDualLeg && lLeg) active.push(lLeg);
   if (rWeap) active.push(rWeap);
@@ -512,6 +519,11 @@ function renderPreview() {
     clearRarityViolationAlert();
   }
 
+  const armSummaryHtml = isDualArm
+    ? `<p class="muted" style="margin:0 0 4px;"><strong>腕部:</strong> ${escapeHtml(rArm.name)}（両腕占有）</p>`
+    : `<p class="muted" style="margin:0 0 4px;"><strong>右腕:</strong> ${escapeHtml(rArm.name)}</p>
+       <p class="muted" style="margin:0 0 4px;"><strong>左腕:</strong> ${escapeHtml(lArm.name)}</p>`;
+
   const legSummaryHtml = isDualLeg
     ? `<p class="muted" style="margin:0 0 4px;"><strong>脚部:</strong> ${escapeHtml(rLeg.name)}（両脚占有）</p>`
     : `<p class="muted" style="margin:0 0 4px;"><strong>右脚:</strong> ${escapeHtml(rLeg.name)}</p>
@@ -529,8 +541,7 @@ function renderPreview() {
     <div class="preview-equip-list" style="margin-bottom:10px; line-height:1.5;">
       <p class="muted" style="margin:0 0 4px;"><strong>胴体:</strong> ${escapeHtml(core.name)}</p>
       <p class="muted" style="margin:0 0 4px;"><strong>頭部:</strong> ${escapeHtml(head.name)}</p>
-      <p class="muted" style="margin:0 0 4px;"><strong>右腕:</strong> ${escapeHtml(rArm.name)}</p>
-      <p class="muted" style="margin:0 0 4px;"><strong>左腕:</strong> ${escapeHtml(lArm.name)}</p>
+      ${armSummaryHtml}
       ${legSummaryHtml}
       <p class="muted" style="margin:0 0 4px;"><strong>右手:</strong> ${escapeHtml(rWeap ? rWeap.name : "なし")}</p>
       <p class="muted" style="margin:0;"><strong>左手:</strong> ${escapeHtml(lWeap ? lWeap.name : "なし")}</p>
@@ -790,6 +801,12 @@ function renderAll() {
     if (isDualArmPart(picked)) {
       state.draft.leftArm = id;
     }
+    if (isIntegratedWeaponPart(picked)) {
+      if (isDualWeaponPart(byId[state.draft.rightWeapon])) {
+        state.draft.leftWeapon = "";
+      }
+      state.draft.rightWeapon = "";
+    }
   });
 
   setBlockState(
@@ -840,6 +857,12 @@ function renderAll() {
         state.draft.leftArm = id;
       } else {
         state.draft.leftArm = id;
+      }
+      if (isIntegratedWeaponPart(picked)) {
+        if (isDualWeaponPart(byId[state.draft.leftWeapon])) {
+          state.draft.rightWeapon = "";
+        }
+        state.draft.leftWeapon = "";
       }
     },
     leftArmPartDisabled
