@@ -8,6 +8,51 @@ const TACTICS = [
   "省エネ・粘り強く戦え"
 ];
 
+const PRESETS = [
+  {
+    id: "knight",
+    name: "盾剣タンク（アイアンナイト）",
+    golemName: "アイアンナイト",
+    core: "C02",
+    head: "H01",
+    rightArm: "A02",
+    leftArm: "A01",
+    rightWeapon: "W01",
+    leftWeapon: "S02",
+    rightLeg: "L01",
+    leftLeg: "L01",
+    tactic: "ガンガン近づけ"
+  },
+  {
+    id: "mage",
+    name: "魔導引き撃ち（アークメイジ）",
+    golemName: "アークメイジ",
+    core: "C03",
+    head: "H02",
+    rightArm: "A01",
+    leftArm: "A01",
+    rightWeapon: "W05",
+    leftWeapon: "W02",
+    rightLeg: "L02",
+    leftLeg: "L02",
+    tactic: "距離をとって戦え"
+  },
+  {
+    id: "twin",
+    name: "二刀流速攻（ツインファング）",
+    golemName: "ツインファング",
+    core: "C01",
+    head: "H02",
+    rightArm: "A02",
+    leftArm: "A02",
+    rightWeapon: "W01",
+    leftWeapon: "W01",
+    rightLeg: "L02",
+    leftLeg: "L02",
+    tactic: "ガンガン近づけ"
+  }
+];
+
 const state = {
   masterData: null,
   masterOk: false,
@@ -32,6 +77,8 @@ const els = {
   reloadDataBtn: document.getElementById("reload-data-btn"),
   golemName: document.getElementById("golem-name"),
   tacticSelect: document.getElementById("tactic-select"),
+  presetSelect: document.getElementById("preset-select"),
+  applyPresetBtn: document.getElementById("apply-preset-btn"),
   bodyHeadList: document.getElementById("body-head-list"),
   armList: document.getElementById("arm-list"),
   legList: document.getElementById("leg-list"),
@@ -60,8 +107,10 @@ function clearBlankBuilder() {
   els.armList.innerHTML = "";
   els.legList.innerHTML = "";
   els.weaponList.innerHTML = "";
+  if (els.presetSelect) els.presetSelect.innerHTML = "";
   els.previewCard.innerHTML = "";
   els.savedList.innerHTML = "";
+  if (els.applyPresetBtn) els.applyPresetBtn.disabled = true;
   els.saveBuildBtn.disabled = true;
   els.saveAsNewBtn.disabled = true;
 }
@@ -195,6 +244,28 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
+function applyPresetById(presetId) {
+  const p = PRESETS.find((x) => x.id === presetId);
+  if (!p || !state.masterData) return;
+  const { byId } = state.masterData;
+  state.draft = {
+    id: null,
+    name: p.golemName,
+    core: byId[p.core] ? p.core : state.draft.core,
+    head: byId[p.head] ? p.head : state.draft.head,
+    rightArm: byId[p.rightArm] ? p.rightArm : state.draft.rightArm,
+    leftArm: byId[p.leftArm] ? p.leftArm : state.draft.leftArm,
+    rightWeapon: p.rightWeapon && byId[p.rightWeapon] ? p.rightWeapon : "",
+    leftWeapon: p.leftWeapon && byId[p.leftWeapon] ? p.leftWeapon : "",
+    rightLeg: byId[p.rightLeg] ? p.rightLeg : state.draft.rightLeg,
+    leftLeg: byId[p.leftLeg] ? p.leftLeg : state.draft.leftLeg,
+    tactic: p.tactic
+  };
+  els.golemName.value = state.draft.name;
+  renderAll();
+  showToast(`プリセット「${p.name}」を反映しました`);
+}
+
 function renderAll() {
   if (!state.masterOk || !state.masterData) {
     clearBlankBuilder();
@@ -214,6 +285,13 @@ function renderAll() {
   if (!state.draft.leftArm && arms[0]) state.draft.leftArm = arms[0].id;
   if (!state.draft.rightLeg && legs[0]) state.draft.rightLeg = legs[0].id;
   if (!state.draft.leftLeg && legs[0]) state.draft.leftLeg = legs[0].id;
+
+  if (els.presetSelect) {
+    const prev = els.presetSelect.value;
+    els.presetSelect.innerHTML = PRESETS.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+    if (prev && PRESETS.some((p) => p.id === prev)) els.presetSelect.value = prev;
+  }
+  if (els.applyPresetBtn) els.applyPresetBtn.disabled = false;
 
   els.tacticSelect.innerHTML = TACTICS.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
   els.tacticSelect.value = state.draft.tactic || TACTICS[0];
@@ -255,6 +333,11 @@ function bindEvents() {
   els.tacticSelect?.addEventListener("change", (e) => {
     state.draft.tactic = e.target.value;
     if (state.masterOk) renderPreview();
+  });
+
+  els.applyPresetBtn?.addEventListener("click", () => {
+    if (!state.masterOk || !els.presetSelect) return;
+    applyPresetById(els.presetSelect.value);
   });
 
   els.saveBuildBtn?.addEventListener("click", () => {
