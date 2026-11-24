@@ -224,25 +224,24 @@ function renderFighterCard(targetEl, build) {
 }
 
 function formatLogLineHtml(line) {
-  const text = String(line);
-  if (text.startsWith("[T1]")) {
-    return `<div class="log-line is-header">${escapeHtml(text)}</div>`;
-  }
-  if (text.startsWith("--- ターン")) {
-    return `<div class="log-line is-turn-divider">${escapeHtml(text)}</div>`;
-  }
-  if (text.startsWith("決着：")) {
-    return `<div class="log-line is-result">${escapeHtml(text)}</div>`;
-  }
+  const raw = String(line);
+  const parts = raw.split("\n");
+  const mainText = parts[0] || "";
+  const subText = parts.slice(1).join("\n");
 
-  const parenIdx = text.indexOf("（");
-  if (parenIdx > 0 && text.endsWith("）")) {
-    const mainPart = text.slice(0, parenIdx).trim();
-    const metaPart = text.slice(parenIdx);
-    return `<div class="log-line">${escapeHtml(mainPart)}<span class="log-sub">${escapeHtml(metaPart)}</span></div>`;
-  }
+  const extraClass = mainText.startsWith("[T1]")
+    ? " is-header"
+    : mainText.startsWith("--- ターン")
+      ? " is-turn-divider"
+      : mainText.startsWith("決着：")
+        ? " is-result"
+        : "";
 
-  return `<div class="log-line">${escapeHtml(text)}</div>`;
+  const subHtml = subText
+    ? `<span class="log-sub" style="display:block;margin-top:2px;white-space:pre-line;">${escapeHtml(subText)}</span>`
+    : "";
+
+  return `<div class="log-line${extraClass}" style="white-space:normal;line-height:1.55;">${escapeHtml(mainText)}${subHtml}</div>`;
 }
 
 function renderBattleResult(result) {
@@ -251,11 +250,15 @@ function renderBattleResult(result) {
   if (els.battleBanner) {
     els.battleBanner.style.display = "block";
     if (result.winnerName) {
-      els.battleBanner.textContent = `${result.winnerName} の勝利`;
+      els.battleBanner.textContent = result.decisionReason
+        ? `${result.winnerName} の勝利（${result.decisionReason}）`
+        : `${result.winnerName} の勝利`;
     } else {
       const hasKoDraw = Array.isArray(result.logs) &&
         result.logs.some((l) => String(l).includes("相打ち"));
-      els.battleBanner.textContent = hasKoDraw ? "相打ち（引き分け）" : "引き分け";
+      els.battleBanner.textContent = hasKoDraw
+        ? "相打ち（引き分け）"
+        : (result.decisionReason ? `引き分け（${result.decisionReason}）` : "引き分け");
     }
   }
 

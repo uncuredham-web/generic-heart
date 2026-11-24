@@ -6,19 +6,19 @@ export const BATTLE_CONFIG = {
   minEvadeRate: 0,
   maxEvadeRate: 60,
 
-  // 行動 a: 攻撃に専念（精密攻撃）— 移動0・命中低下（個別調整用）・回避低下・狙った部位に確定ヒット
+  // 攻撃に専念（精密攻撃）：移動0・命中低下（個別調整用）・回避低下・狙った部位に確定ヒット
   precisionAccMod: -15,
   precisionEvadeMod: -10,
 
-  // 行動 b: 攻撃に専念（通常攻撃）— 移動0・命中上昇・回避低下・ランダム部位
+  // 攻撃に専念（通常攻撃）：移動0・命中上昇・回避低下・ランダム部位
   normalAccMod: 10,
   normalEvadeMod: -5,
 
-  // 行動 c: 移動に専念 — 移動力+1・攻撃なし・回避上昇
+  // 移動に専念：移動力+1・攻撃なし・回避上昇
   moveOnlyExtraMove: 1,
   moveOnlyEvadeMod: 15,
 
-  // 行動 d: 移動しながら攻撃 — 移動力だけ移動・命中低下（個別調整用）・回避据え置き・ランダム部位
+  // 移動しながら攻撃：移動力だけ移動・命中低下（個別調整用）・回避据え置き・ランダム部位
   moveAttackAccMod: -10,
   moveAttackEvadeMod: 0,
 
@@ -32,7 +32,7 @@ export const BATTLE_CONFIG = {
   aegisMagicMultiplier: 0.5,
 
   // 戦闘初期値・上限
-  initialDistance: 4,
+  initialDistance: 3,
   minDistance: 1,
   maxTurns: 30
 };
@@ -49,6 +49,7 @@ export const TACTICS = {
 
 function normalizeTactic(tactic) {
   const legacyMap = {
+    "ガンガン近づけ": TACTICS.SURE_PUSH,
     "バランスよく戦え": TACTICS.SURE_PUSH,
     "距離をとって戦え": TACTICS.CONTROL_RANGE,
     "省エネ・粘り強く戦え": TACTICS.SURVIVE_SMART
@@ -196,7 +197,6 @@ export function calcFighterStats(build = {}, masterData = {}) {
   const baseCost = activeParts.reduce((sum, p) => sum + (Number(p?.baseCost) || 0), 0);
   const mpRegen = (Number(corePart.mpRegen) || 0) - baseCost;
 
-  // 部位ごとの耐久・状態管理
   const parts = {
     core: createPartState(corePart, "核", 300, 0, "core"),
     head: createPartState(headPart, "頭部", 100, 0, "head"),
@@ -210,7 +210,6 @@ export function calcFighterStats(build = {}, masterData = {}) {
       : createPartState(lLegPart, "左脚", 110, 1, "leftLeg")
   };
 
-  // 盾（右腕・左腕装備）
   const shields = [];
   if (rWeapPart && isShieldPart(rWeapPart)) {
     shields.push({
@@ -231,7 +230,6 @@ export function calcFighterStats(build = {}, masterData = {}) {
     });
   }
 
-  // 手持ち攻撃武器（右・左）
   const handWeapons = [];
   const rArmIntegrated = isIntegratedWeaponPart(rArmPart);
   const lArmIntegrated = !isDualArm && isIntegratedWeaponPart(lArmPart);
@@ -261,7 +259,6 @@ export function calcFighterStats(build = {}, masterData = {}) {
     });
   }
 
-  // 内蔵・一体型武器（頭・右腕・左腕）
   const builtinWeapons = [];
   const candidates = [
     { part: headPart, sourceArm: null, label: "頭部内蔵" },
@@ -446,7 +443,6 @@ function pickTargetPart(defender, actionType, preferredTargetKey = null) {
     }
   }
 
-  // 通常攻撃（b）・移動攻撃（d）または狙い部位破壊済みの場合はランダム部位抽選
   const weights = {
     core: 35,
     rightArm: 16,
@@ -505,30 +501,30 @@ function decideTurnAction(actor, defender, currentDistance) {
 
   const tryPrecision = () =>
     canPrecision && hasAnyInRangeNow
-      ? makePlan("a", 0, "a.攻撃に専念(精密攻撃)")
+      ? makePlan("a", 0, "攻撃に専念（精密攻撃）")
       : null;
 
   const tryNormal = () =>
     hasAnyInRangeNow
-      ? makePlan("b", 0, "b.攻撃に専念(通常攻撃)")
+      ? makePlan("b", 0, "攻撃に専念（通常攻撃）")
       : null;
 
   const tryMoveAttack = (preferredDir = "advance") => {
     if (!canMove || baseMove <= 0 || usableWeapons.length === 0) return null;
     if (preferredDir === "retreat") {
       if (hasAnyInRangeAfterRetreat) {
-        return makePlan("d", baseMove, "d.移動しながら攻撃(後退)");
+        return makePlan("d", baseMove, "移動しながら攻撃（後退）");
       }
-      if (hasAnyInRangeAfterAdvance) {
-        return makePlan("d", afterAdvanceDist - currentDistance, "d.移動しながら攻撃(接近)");
+      if (!hasAnyInRangeNow && hasAnyInRangeAfterAdvance) {
+        return makePlan("d", afterAdvanceDist - currentDistance, "移動しながら攻撃（接近）");
       }
       return null;
     }
-    if (hasAnyInRangeAfterAdvance) {
-      return makePlan("d", afterAdvanceDist - currentDistance, "d.移動しながら攻撃(接近)");
+    if (!hasAnyInRangeNow && hasAnyInRangeAfterAdvance) {
+      return makePlan("d", afterAdvanceDist - currentDistance, "移動しながら攻撃（接近）");
     }
-    if (hasAnyInRangeAfterRetreat) {
-      return makePlan("d", baseMove, "d.移動しながら攻撃(後退)");
+    if (!hasAnyInRangeNow && hasAnyInRangeAfterRetreat) {
+      return makePlan("d", baseMove, "移動しながら攻撃（後退）");
     }
     return null;
   };
@@ -536,16 +532,21 @@ function decideTurnAction(actor, defender, currentDistance) {
   const tryMoveOnly = (preferredDir = "advance") => {
     if (!canMove || movePlusOne <= 0) return null;
     if (preferredDir === "retreat") {
-      return makePlan("c", movePlusOne, "c.移動に専念(後退)");
+      // すでに射程内なら逃げ続けて膠着するのを防ぐ
+      if (hasAnyInRangeNow) return null;
+      return makePlan("c", movePlusOne, "移動に専念（後退）");
     }
-    if (currentDistance > BATTLE_CONFIG.minDistance) {
+    if (!hasAnyInRangeNow && currentDistance > BATTLE_CONFIG.minDistance) {
       const delta = afterMoveOnlyAdvanceDist - currentDistance;
-      return makePlan("c", delta, "c.移動に専念(接近)");
+      return makePlan("c", delta, "移動に専念（接近）");
     }
-    return makePlan("c", movePlusOne, "c.移動に専念(距離調整)");
+    if (!hasAnyInRangeNow) {
+      return makePlan("c", movePlusOne, "移動に専念（距離調整）");
+    }
+    return null;
   };
 
-  const stayPut = () => makePlan("b", 0, "b.攻撃に専念(通常攻撃・待機)");
+  const stayPut = () => makePlan("b", 0, "攻撃に専念（通常攻撃・待機）");
 
   switch (actor.tactic) {
     case TACTICS.PRECISION_SNIPE:
@@ -569,17 +570,18 @@ function decideTurnAction(actor, defender, currentDistance) {
     case TACTICS.CONTROL_RANGE:
       return (
         tryMoveAttack("retreat") ||
-        tryMoveOnly("retreat") ||
         tryNormal() ||
+        tryMoveOnly("retreat") ||
         tryMoveAttack("advance") ||
+        tryMoveOnly("advance") ||
         stayPut()
       );
 
     case TACTICS.SURVIVE_SMART:
       return (
-        tryMoveOnly("retreat") ||
         tryNormal() ||
-        tryMoveAttack("retreat") ||
+        tryPrecision() ||
+        tryMoveAttack("advance") ||
         tryMoveOnly("advance") ||
         stayPut()
       );
@@ -588,8 +590,8 @@ function decideTurnAction(actor, defender, currentDistance) {
       return (
         tryNormal() ||
         tryMoveAttack("advance") ||
-        tryMoveOnly("advance") ||
         tryPrecision() ||
+        tryMoveOnly("advance") ||
         stayPut()
       );
 
@@ -639,12 +641,10 @@ function calcHitChance(actor, defender, weapon, plan) {
 function applyDamageToPart(defender, targetPart, rawDamage, isMagic, logs) {
   let dmg = Math.max(1, Math.round(rawDamage));
 
-  // イージスシールド：魔力武器のダメージを半減して受ける
   if (isMagic && defender.shields?.some((s) => !s.broken && partText(s).includes("半減"))) {
     dmg = Math.max(1, Math.floor(dmg * BATTLE_CONFIG.aegisMagicMultiplier));
   }
 
-  // 腕部着弾時、有効なシールドがあれば肩代わり
   const armKey = targetPart.key;
   if (armKey === "rightArm" || armKey === "leftArm") {
     const activeShield = (defender.shields || []).find(
@@ -653,11 +653,11 @@ function applyDamageToPart(defender, targetPart, rawDamage, isMagic, logs) {
     if (activeShield) {
       activeShield.hp = Math.max(0, activeShield.hp - dmg);
       logs.push(
-        `・シールド「${activeShield.name}」が ${dmg} ダメージを肩代わり！（盾耐久:${activeShield.hp}/${activeShield.maxHp}）`
+        `・シールド「${activeShield.name}」が ${dmg} ダメージを肩代わり\n（盾耐久:${activeShield.hp}/${activeShield.maxHp}）`
       );
       if (activeShield.hp <= 0) {
         activeShield.broken = true;
-        logs.push(`・シールド「${activeShield.name}」が破壊された！`);
+        logs.push(`・シールド「${activeShield.name}」が破壊された`);
       }
       return;
     }
@@ -670,27 +670,27 @@ function applyDamageToPart(defender, targetPart, rawDamage, isMagic, logs) {
   }
 
   logs.push(
-    `・${defender.name} の「${targetPart.name}」に ${dmg} ダメージ！（部位耐久:${targetPart.hp}/${targetPart.maxHp} / 核耐久:${defender.hp}/${defender.maxHp}）`
+    `・${defender.name} の「${targetPart.name}」に ${dmg} ダメージ\n（部位耐久:${targetPart.hp}/${targetPart.maxHp} / 核耐久:${defender.hp}/${defender.maxHp}）`
   );
 
   if (targetPart.hp <= 0 && !targetPart.broken) {
     targetPart.broken = true;
-    logs.push(`・【部位破壊】${defender.name} の「${targetPart.name}」が破壊された！`);
+    logs.push(`・【部位破壊】${defender.name} の「${targetPart.name}」が破壊された`);
 
     if (targetPart.key === "head") {
       defender.accBonus = calcCurrentAccBonus(defender);
-      logs.push(`  → 頭部破壊：命中率低下（${BATTLE_CONFIG.brokenHeadAccMod}%）＆ 精密攻撃が使用不可に！`);
+      logs.push(`  → 頭部破壊：命中率低下（${BATTLE_CONFIG.brokenHeadAccMod}%）・精密攻撃不可`);
     } else if (targetPart.key === "rightArm" || targetPart.key === "leftArm") {
-      logs.push(`  → ${targetPart.name} 破壊：該当腕の武器による攻撃が不可に！`);
+      logs.push(`  → ${targetPart.name} 破壊：該当腕の武器攻撃不可`);
     } else if (targetPart.key === "rightLeg" || targetPart.key === "leftLeg") {
       defender.move = calcCurrentMove(defender);
-      logs.push(`  → ${targetPart.name} 破壊：移動力が ${defender.move} に低下！`);
+      logs.push(`  → ${targetPart.name} 破壊：移動力が ${defender.move} に低下`);
       if (!canUseMoveActions(defender)) {
-        logs.push(`  → 両脚機能停止：「移動に専念」「移動しながら攻撃」が選択不可に！`);
+        logs.push(`  → 両脚破壊：「移動に専念」「移動しながら攻撃」が選択不可`);
       }
     } else if (targetPart.key === "core") {
       defender.hp = 0;
-      logs.push(`  → 【核破壊】${defender.name} の核が破壊された！（同ターン攻撃判定は継続）`);
+      logs.push(`  → 【核破壊】${defender.name} の核が破壊された（同ターン攻撃判定は継続）`);
     }
   }
 }
@@ -707,9 +707,13 @@ function executePlanAttacks(plan, defender, distanceAfterMove, logs) {
   if (weapons.length === 0) {
     const hadWeapons = getAvailableWeapons(actor, actor.mp).length > 0;
     if (hadWeapons) {
-      logs.push(`・${actor.name} は移動の結果、選択していた攻撃の射程外（現在距離:${distanceAfterMove}）となり攻撃できなかった`);
+      logs.push(
+        `・${actor.name} は移動の結果、射程外となり攻撃できず\n（現在距離:${distanceAfterMove} / 残MP:${actor.mp}）`
+      );
     } else {
-      logs.push(`・${actor.name} は攻撃可能な武器がないか魔力不足のため攻撃できなかった（残MP:${actor.mp}）`);
+      logs.push(
+        `・${actor.name} は攻撃可能な武器がないか魔力不足のため攻撃できず\n（残MP:${actor.mp}）`
+      );
     }
     return;
   }
@@ -717,7 +721,7 @@ function executePlanAttacks(plan, defender, distanceAfterMove, logs) {
   for (const weapon of weapons) {
     const cost = getWeaponCost(weapon);
     if (cost > actor.mp) {
-      logs.push(`・${actor.name} は魔力不足で「${weapon.name}」の攻撃を見送った（残MP:${actor.mp}）`);
+      logs.push(`・${actor.name} は魔力不足で「${weapon.name}」の追撃を見送り\n（残MP:${actor.mp}）`);
       break;
     }
 
@@ -729,7 +733,7 @@ function executePlanAttacks(plan, defender, distanceAfterMove, logs) {
 
     if (roll > hitChance) {
       logs.push(
-        `・${actor.name} の${handPrefix}「${weapon.name}」は外れた！（命中:${hitChance}%${dualTag} / 消費MP:${cost} / 残MP:${actor.mp}）`
+        `・${actor.name} の${handPrefix}「${weapon.name}」は外れた\n（命中:${hitChance}%${dualTag} / 消費MP:${cost} / 残MP:${actor.mp}）`
       );
       continue;
     }
@@ -741,12 +745,12 @@ function executePlanAttacks(plan, defender, distanceAfterMove, logs) {
 
     const targetPart = pickTargetPart(defender, actionType, plan.targetKey);
     if (!targetPart) {
-      logs.push(`・${actor.name} の${handPrefix}「${weapon.name}」が命中したが対象部位がない`);
+      logs.push(`・${actor.name} の${handPrefix}「${weapon.name}」が命中したが対象部位なし`);
       continue;
     }
 
     logs.push(
-      `・${actor.name} が${handPrefix}「${weapon.name}」で攻撃命中！ 狙い/着弾部位：${targetPart.name}（命中:${hitChance}%${dualTag} / 消費MP:${cost} / 残MP:${actor.mp}）`
+      `・${actor.name} が${handPrefix}「${weapon.name}」で攻撃命中（狙い/着弾：${targetPart.name}）\n（命中:${hitChance}%${dualTag} / 消費MP:${cost} / 残MP:${actor.mp}）`
     );
     applyDamageToPart(defender, targetPart, basePower, Boolean(weapon.isMagic), logs);
   }
@@ -758,7 +762,9 @@ export function runAutoBattle(build1, build2, masterData) {
   let distance = BATTLE_CONFIG.initialDistance;
   const logs = [];
 
-  logs.push(`[T1] ${f1.name} (核耐久:${f1.hp}/${f1.maxHp} / 魔力:${f1.mp}/${f1.maxMp}) vs ${f2.name} (核耐久:${f2.hp}/${f2.maxHp} / 魔力:${f2.mp}/${f2.maxMp})`);
+  logs.push(
+    `[T1] ${f1.name} vs ${f2.name}\n（${f1.name} 核耐久:${f1.hp}/${f1.maxHp}・魔力:${f1.mp}/${f1.maxMp} / ${f2.name} 核耐久:${f2.hp}/${f2.maxHp}・魔力:${f2.mp}/${f2.maxMp} / 初期距離:${distance}）`
+  );
 
   for (let turn = 1; turn <= BATTLE_CONFIG.maxTurns; turn += 1) {
     if (f1.hp <= 0 || f2.hp <= 0) break;
@@ -767,24 +773,24 @@ export function runAutoBattle(build1, build2, masterData) {
       logs.push(`--- ターン ${turn}（開始時距離:${distance}）---`);
     }
 
-    // 1. 毎ターン魔力回復
     for (const f of [f1, f2]) {
       f.mp = Math.max(0, Math.min(f.maxMp, f.mp + f.mpRegen));
     }
 
-    // 2. 双方が行動決定
     const plan1 = decideTurnAction(f1, f2, distance);
     const plan2 = decideTurnAction(f2, f1, distance);
-    logs.push(`・行動選択：${f1.name} → ${plan1.label} ／ ${f2.name} → ${plan2.label}`);
+    logs.push(
+      `・行動選択\n（${f1.name}：${plan1.label} / ${f2.name}：${plan2.label}）`
+    );
 
-    // 3. 同時移動
     const totalMoveDelta = plan1.moveDelta + plan2.moveDelta;
     if (totalMoveDelta !== 0) {
       distance = Math.max(BATTLE_CONFIG.minDistance, distance + totalMoveDelta);
     }
-    logs.push(`・移動完了（現在距離:${distance} / ${f1.name} MP:${f1.mp} / ${f2.name} MP:${f2.mp}）`);
+    logs.push(
+      `・移動完了\n（現在距離:${distance} / ${f1.name} MP:${f1.mp}・核:${f1.hp} / ${f2.name} MP:${f2.mp}・核:${f2.hp}）`
+    );
 
-    // 4. 同時攻撃（核が破壊されても同ターンの攻撃判定は最後まで処理し、相打ちあり）
     executePlanAttacks(plan1, f2, distance, logs);
     executePlanAttacks(plan2, f1, distance, logs);
 
@@ -795,25 +801,45 @@ export function runAutoBattle(build1, build2, masterData) {
 
   let winnerName = null;
   let isDrawByKo = false;
+  let decisionReason = "";
 
   if (f1.hp <= 0 && f2.hp <= 0) {
     winnerName = null;
     isDrawByKo = true;
+    decisionReason = "相打ち（双方が同ターンに核耐久0以下）";
   } else if (f1.hp > 0 && f2.hp <= 0) {
     winnerName = f1.name;
+    decisionReason = `${f2.name} の核耐久が0に到達`;
   } else if (f2.hp > 0 && f1.hp <= 0) {
     winnerName = f2.name;
-  } else if (f1.hp !== f2.hp) {
-    winnerName = f1.hp > f2.hp ? f1.name : f2.name;
+    decisionReason = `${f1.name} の核耐久が0に到達`;
+  } else {
+    const ratio1 = f1.maxHp > 0 ? f1.hp / f1.maxHp : 0;
+    const ratio2 = f2.maxHp > 0 ? f2.hp / f2.maxHp : 0;
+    const pct1 = Math.round(ratio1 * 100);
+    const pct2 = Math.round(ratio2 * 100);
+
+    if (Math.abs(ratio1 - ratio2) < 0.0001) {
+      if (f1.hp === f2.hp) {
+        winnerName = null;
+        decisionReason = `規定${BATTLE_CONFIG.maxTurns}ターン終了・残耐久同値（${f1.hp} vs ${f2.hp}）`;
+      } else {
+        winnerName = f1.hp > f2.hp ? f1.name : f2.name;
+        decisionReason = `規定${BATTLE_CONFIG.maxTurns}ターン終了・残耐久差（${f1.name}:${f1.hp} vs ${f2.name}:${f2.hp}）`;
+      }
+    } else {
+      winnerName = ratio1 > ratio2 ? f1.name : f2.name;
+      decisionReason = `規定${BATTLE_CONFIG.maxTurns}ターン終了・残耐久割合（${f1.name}:${pct1}%[${f1.hp}/${f1.maxHp}] vs ${f2.name}:${pct2}%[${f2.hp}/${f2.maxHp}]）`;
+    }
   }
 
   if (winnerName) {
-    logs.push(`決着：${winnerName} の勝利！`);
+    logs.push(`決着：${winnerName} の勝利！\n（${decisionReason}）`);
   } else if (isDrawByKo) {
-    logs.push("決着：相打ち（引き分け）！");
+    logs.push(`決着：相打ち（引き分け）！\n（${decisionReason}）`);
   } else {
-    logs.push("決着：規定ターン終了（引き分け）");
+    logs.push(`決着：引き分け\n（${decisionReason}）`);
   }
 
-  return { winnerName, logs };
+  return { winnerName, decisionReason, logs };
 }
