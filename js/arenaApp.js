@@ -1,8 +1,38 @@
-import { loadGolemMasterData } from "./data/golemData.js";
+import {
+  loadGolemMasterData,
+  TACTIC_OPTIONS,
+  DEFAULT_TACTIC,
+  PRESET_BUILDS
+} from "./data/golemData.js";
 import { loadSavedBuilds, showToast } from "./ui/storage.js";
 import { calcFighterStats, runAutoBattle } from "./rules/battleRules.js";
 
-const DEFAULT_BUILDS = [
+const TACTICS = Array.isArray(TACTIC_OPTIONS) && TACTIC_OPTIONS.length > 0
+  ? TACTIC_OPTIONS
+  : [
+      "精密狙撃で仕留めろ",
+      "確実に当てて押し切れ",
+      "間合いを制して翻弄せよ",
+      "しぶとく生き残れ",
+      "全力で薙ぎ払え"
+    ];
+
+const LEGACY_TACTIC_MAP = {
+  "ガンガン近づけ": "確実に当てて押し切れ",
+  "バランスよく戦え": "確実に当てて押し切れ",
+  "距離をとって戦え": "間合いを制して翻弄せよ",
+  "省エネ・粘り強く戦え": "しぶとく生き残れ"
+};
+
+function normalizeTactic(tactic) {
+  if (TACTICS.includes(tactic)) return tactic;
+  if (tactic && LEGACY_TACTIC_MAP[tactic] && TACTICS.includes(LEGACY_TACTIC_MAP[tactic])) {
+    return LEGACY_TACTIC_MAP[tactic];
+  }
+  return DEFAULT_TACTIC && TACTICS.includes(DEFAULT_TACTIC) ? DEFAULT_TACTIC : TACTICS[0];
+}
+
+const FALLBACK_BUILDS = [
   {
     id: "preset_knight",
     name: "アイアンナイト",
@@ -14,7 +44,7 @@ const DEFAULT_BUILDS = [
     leftWeapon: "S02",
     rightLeg: "L01",
     leftLeg: "L01",
-    tactic: "ガンガン近づけ"
+    tactic: "確実に当てて押し切れ"
   },
   {
     id: "preset_mage",
@@ -27,7 +57,7 @@ const DEFAULT_BUILDS = [
     leftWeapon: "W05",
     rightLeg: "L02",
     leftLeg: "L02",
-    tactic: "距離をとって戦え"
+    tactic: "間合いを制して翻弄せよ"
   },
   {
     id: "preset_twin",
@@ -40,9 +70,29 @@ const DEFAULT_BUILDS = [
     leftWeapon: "W01",
     rightLeg: "L02",
     leftLeg: "L02",
-    tactic: "ガンガン近づけ"
+    tactic: "全力で薙ぎ払え"
   }
 ];
+
+function getDefaultBuilds() {
+  const source = Array.isArray(PRESET_BUILDS) && PRESET_BUILDS.length > 0
+    ? PRESET_BUILDS
+    : FALLBACK_BUILDS;
+
+  return source.map((p, idx) => ({
+    id: p.id || `preset_${idx + 1}`,
+    name: p.golemName || p.name || `プリセット機体${idx + 1}`,
+    core: p.core || "",
+    head: p.head || "",
+    rightArm: p.rightArm || "",
+    leftArm: p.leftArm || "",
+    rightWeapon: p.rightWeapon || "",
+    leftWeapon: p.leftWeapon || "",
+    rightLeg: p.rightLeg || "",
+    leftLeg: p.leftLeg || "",
+    tactic: normalizeTactic(p.tactic)
+  }));
+}
 
 const state = {
   masterData: null,
@@ -74,27 +124,55 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
+function setArenaControlsLocked(locked) {
+  if (els.fighter1Select) els.fighter1Select.disabled = locked;
+  if (els.fighter2Select) els.fighter2Select.disabled = locked;
+  if (els.startBattleBtn) els.startBattleBtn.disabled = locked;
+  if (els.randomBattleBtn) els.randomBattleBtn.disabled = locked;
+}
+
+function clearBattleView() {
+  if (els.battleBanner) {
+    els.battleBanner.style.display = "none";
+    els.battleBanner.textContent = "";
+  }
+  if (els.battleLog) {
+    els.battleLog.style.display = "none";
+    els.battleLog.innerHTML = "";
+  }
+}
+
 function renderStatus(statusInfo) {
-  els.dataStatus.textContent = statusInfo.message;
-  els.dataStatus.classList.toggle("is-fallback", !statusInfo.ok);
-  if (!statusInfo.ok) {
-    els.masterError.style.display = "block";
-    els.masterError.textContent = statusInfo.message;
-  } else {
-    els.masterError.style.display = "none";
-    els.masterError.textContent = "";
+  if (els.dataStatus) {
+    els.dataStatus.textContent = statusInfo.message;
+    els.dataStatus.classList.toggle("is-fallback", !statusInfo.ok);
+  }
+  if (els.masterError) {
+    if (!statusInfo.ok) {
+      els.masterError.style.display = "block";
+      els.masterError.textContent = statusInfo.message;
+    } else {
+      els.masterError.style.display = "none";
+      els.masterError.textContent = "";
+    }
   }
 }
 
 function getAllBuilds() {
-  const saved = Array.isArray(loadSavedBuilds()) ? loadSavedBuilds() : [];
+  const savedRaw = Array.isArray(loadSavedBuilds()) ? loadSavedBuilds() : [];
+  const saved = savedRaw.map((b) => ({
+    ...b,
+    tactic: normalizeTactic(b.tactic)
+  }));
+  const defaults = getDefaultBuilds();
+
   const seenIds = new Set(saved.map((b) => String(b.id || "")).filter(Boolean));
   const seenNames = new Set(
     saved.map((b) => String(b.name || "").trim()).filter(Boolean)
   );
 
   const merged = [...saved];
-  for (const preset of DEFAULT_BUILDS) {
+  for (const preset of defaults) {
     const pId = String(preset.id || "");
     const pName = String(preset.name || "").trim();
     if (seenIds.has(pId) || seenNames.has(pName)) continue;
@@ -115,8 +193,14 @@ function renderFighterCard(targetEl, build) {
     targetEl.innerHTML = `<p class="muted">機体が選択されていません。</p>`;
     return;
   }
-  const st = calcFighterStats(build, state.masterData);
+  const normalizedBuild = {
+    ...build,
+    tactic: normalizeTactic(build.tactic)
+  };
+  const st = calcFighterStats(normalizedBuild, state.masterData);
   const eq = st.equipmentSummary;
+  const mpRegenLabel = st.mpRegen >= 0 ? `+${st.mpRegen}` : `${st.mpRegen}`;
+
   targetEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
       <h3 style="margin:0;font-size:1.1rem;">${escapeHtml(st.name)}</h3>
@@ -133,8 +217,8 @@ function renderFighterCard(targetEl, build) {
     </div>
     <div class="stats-grid" style="grid-template-columns:repeat(3, minmax(0, 1fr));">
       <div class="stat-box"><div class="stat-label">胴体耐久</div><div class="stat-value">${st.hp}</div></div>
-      <div class="stat-box"><div class="stat-label">最大魔力</div><div class="stat-value">${st.mp}</div></div>
-      <div class="stat-box"><div class="stat-label">移動力</div><div class="stat-value">${st.move}</div></div>
+      <div class="stat-box"><div class="stat-label">最大魔力</div><div class="stat-value">${st.maxMp}</div></div>
+      <div class="stat-box"><div class="stat-label">移動力（回復${mpRegenLabel}）</div><div class="stat-value">${st.move}</div></div>
     </div>
   `;
 }
@@ -166,9 +250,13 @@ function renderBattleResult(result) {
 
   if (els.battleBanner) {
     els.battleBanner.style.display = "block";
-    els.battleBanner.textContent = result.winnerName
-      ? `${result.winnerName} の勝利`
-      : "引き分け";
+    if (result.winnerName) {
+      els.battleBanner.textContent = `${result.winnerName} の勝利`;
+    } else {
+      const hasKoDraw = Array.isArray(result.logs) &&
+        result.logs.some((l) => String(l).includes("相打ち"));
+      els.battleBanner.textContent = hasKoDraw ? "相打ち（引き分け）" : "引き分け";
+    }
   }
 
   if (els.battleLog) {
@@ -184,9 +272,12 @@ function syncBuildSelectors() {
     if (els.fighter2Select) els.fighter2Select.innerHTML = "";
     renderFighterCard(els.fighter1Card, null);
     renderFighterCard(els.fighter2Card, null);
+    clearBattleView();
+    setArenaControlsLocked(true);
     return;
   }
 
+  setArenaControlsLocked(false);
   state.builds = getAllBuilds();
   if (!state.builds.some((b) => b.id === state.fighter1Id)) {
     state.fighter1Id = state.builds[0]?.id || "";
@@ -240,19 +331,19 @@ async function applyMasterLoadResult(res) {
   state.masterData = res.data;
   state.masterOk = Boolean(res.ok);
   renderStatus(res);
-  if (els.startBattleBtn) els.startBattleBtn.disabled = !state.masterOk;
-  if (els.randomBattleBtn) els.randomBattleBtn.disabled = !state.masterOk;
   syncBuildSelectors();
 }
 
 function bindEvents() {
   els.fighter1Select?.addEventListener("change", (e) => {
+    if (!state.masterOk) return;
     state.fighter1Id = e.target.value;
     const f1 = state.builds.find((b) => b.id === state.fighter1Id);
     renderFighterCard(els.fighter1Card, f1);
   });
 
   els.fighter2Select?.addEventListener("change", (e) => {
+    if (!state.masterOk) return;
     state.fighter2Id = e.target.value;
     const f2 = state.builds.find((b) => b.id === state.fighter2Id);
     renderFighterCard(els.fighter2Card, f2);
@@ -267,6 +358,11 @@ function bindEvents() {
     showToast(res.message);
   });
 
+  window.addEventListener("offline", async () => {
+    const res = await loadGolemMasterData();
+    await applyMasterLoadResult(res);
+  });
+
   window.addEventListener("storage", () => {
     syncBuildSelectors();
   });
@@ -277,6 +373,7 @@ function bindEvents() {
 }
 
 async function init() {
+  setArenaControlsLocked(true);
   bindEvents();
   const res = await loadGolemMasterData();
   await applyMasterLoadResult(res);

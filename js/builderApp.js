@@ -1,14 +1,37 @@
-import { loadGolemMasterData } from "./data/golemData.js";
+import {
+  loadGolemMasterData,
+  TACTIC_OPTIONS,
+  DEFAULT_TACTIC,
+  PRESET_BUILDS
+} from "./data/golemData.js";
 import { loadSavedBuilds, saveCustomBuild, deleteCustomBuild, showToast } from "./ui/storage.js";
 
-const TACTICS = [
-  "ガンガン近づけ",
-  "距離をとって戦え",
-  "バランスよく戦え",
-  "省エネ・粘り強く戦え"
-];
+const TACTICS = Array.isArray(TACTIC_OPTIONS) && TACTIC_OPTIONS.length > 0
+  ? TACTIC_OPTIONS
+  : [
+      "精密狙撃で仕留めろ",
+      "確実に当てて押し切れ",
+      "間合いを制して翻弄せよ",
+      "しぶとく生き残れ",
+      "全力で薙ぎ払え"
+    ];
 
-const PRESETS = [
+const LEGACY_TACTIC_MAP = {
+  "ガンガン近づけ": "確実に当てて押し切れ",
+  "バランスよく戦え": "確実に当てて押し切れ",
+  "距離をとって戦え": "間合いを制して翻弄せよ",
+  "省エネ・粘り強く戦え": "しぶとく生き残れ"
+};
+
+function normalizeTactic(tactic) {
+  if (TACTICS.includes(tactic)) return tactic;
+  if (tactic && LEGACY_TACTIC_MAP[tactic] && TACTICS.includes(LEGACY_TACTIC_MAP[tactic])) {
+    return LEGACY_TACTIC_MAP[tactic];
+  }
+  return DEFAULT_TACTIC && TACTICS.includes(DEFAULT_TACTIC) ? DEFAULT_TACTIC : TACTICS[0];
+}
+
+const FALLBACK_PRESETS = [
   {
     id: "knight",
     name: "盾剣タンク（アイアンナイト）",
@@ -21,7 +44,7 @@ const PRESETS = [
     leftWeapon: "S02",
     rightLeg: "L01",
     leftLeg: "L01",
-    tactic: "ガンガン近づけ"
+    tactic: "確実に当てて押し切れ"
   },
   {
     id: "mage",
@@ -35,7 +58,7 @@ const PRESETS = [
     leftWeapon: "W05",
     rightLeg: "L02",
     leftLeg: "L02",
-    tactic: "距離をとって戦え"
+    tactic: "間合いを制して翻弄せよ"
   },
   {
     id: "twin",
@@ -49,9 +72,25 @@ const PRESETS = [
     leftWeapon: "W01",
     rightLeg: "L02",
     leftLeg: "L02",
-    tactic: "ガンガン近づけ"
+    tactic: "全力で薙ぎ払え"
   }
 ];
+
+function getAvailablePresets() {
+  const sheetPresets = Array.isArray(state.masterData?.presets) && state.masterData.presets.length > 0
+    ? state.masterData.presets
+    : [];
+  const basePresets = Array.isArray(PRESET_BUILDS) && PRESET_BUILDS.length > 0
+    ? PRESET_BUILDS
+    : FALLBACK_PRESETS;
+
+  const source = sheetPresets.length > 0 ? sheetPresets : basePresets;
+  return source.map((p) => ({
+    ...p,
+    golemName: p.golemName || p.name || "名称未設定ゴーレム",
+    tactic: normalizeTactic(p.tactic)
+  }));
+}
 
 const state = {
   masterData: null,
@@ -67,7 +106,7 @@ const state = {
     leftWeapon: "",
     rightLeg: "",
     leftLeg: "",
-    tactic: TACTICS[0]
+    tactic: normalizeTactic(DEFAULT_TACTIC)
   }
 };
 
@@ -147,6 +186,8 @@ function normalizeDraftConstraints() {
   const singleLegs = legs.filter((p) => !isDualLegPart(p));
   const fallbackSingleLeg = singleLegs[0]?.id || "";
 
+  state.draft.tactic = normalizeTactic(state.draft.tactic);
+
   const rArm = byId[state.draft.rightArm];
   const lArm = byId[state.draft.leftArm];
   if (isDualArmPart(rArm)) {
@@ -182,15 +223,29 @@ function normalizeDraftConstraints() {
   }
 }
 
+function setControlsLocked(locked) {
+  if (els.golemName) els.golemName.disabled = locked;
+  if (els.tacticSelect) els.tacticSelect.disabled = locked;
+  if (els.presetSelect) els.presetSelect.disabled = locked;
+  if (els.applyPresetBtn) els.applyPresetBtn.disabled = locked;
+  if (els.saveBuildBtn) els.saveBuildBtn.disabled = locked;
+  if (els.saveAsNewBtn) els.saveAsNewBtn.disabled = locked;
+  if (els.exportJsonBtn) els.exportJsonBtn.disabled = locked;
+}
+
 function renderStatus(statusInfo) {
-  els.dataStatus.textContent = statusInfo.message;
-  els.dataStatus.classList.toggle("is-fallback", !statusInfo.ok);
-  if (!statusInfo.ok) {
-    els.masterError.style.display = "block";
-    els.masterError.textContent = statusInfo.message;
-  } else {
-    els.masterError.style.display = "none";
-    els.masterError.textContent = "";
+  if (els.dataStatus) {
+    els.dataStatus.textContent = statusInfo.message;
+    els.dataStatus.classList.toggle("is-fallback", !statusInfo.ok);
+  }
+  if (els.masterError) {
+    if (!statusInfo.ok) {
+      els.masterError.style.display = "block";
+      els.masterError.textContent = statusInfo.message;
+    } else {
+      els.masterError.style.display = "none";
+      els.masterError.textContent = "";
+    }
   }
 }
 
@@ -208,11 +263,9 @@ function clearBlankBuilder() {
     if (el) el.innerHTML = "";
   });
   if (els.presetSelect) els.presetSelect.innerHTML = "";
-  els.previewCard.innerHTML = "";
-  els.savedList.innerHTML = "";
-  if (els.applyPresetBtn) els.applyPresetBtn.disabled = true;
-  els.saveBuildBtn.disabled = true;
-  els.saveAsNewBtn.disabled = true;
+  if (els.previewCard) els.previewCard.innerHTML = "";
+  if (els.savedList) els.savedList.innerHTML = "";
+  setControlsLocked(true);
 }
 
 function formatPartSpec(p) {
@@ -301,11 +354,12 @@ function renderPreview() {
   const baseCost = active.reduce((s, p) => s + (p.baseCost || 0), 0);
   const netMp = (core.mpRegen || 0) - baseCost;
   const move = isDualLeg ? (rLeg.move || 0) : (rLeg.move || 0) + (lLeg.move || 0);
+  const tacticLabel = normalizeTactic(state.draft.tactic);
 
   els.previewCard.innerHTML = `
     <div class="preview-header">
       <h3 class="preview-name">${escapeHtml(state.draft.name || "名称未設定ゴーレム")}</h3>
-      <span class="tag">${escapeHtml(state.draft.tactic)}</span>
+      <span class="tag">${escapeHtml(tacticLabel)}</span>
     </div>
     <p class="muted" style="margin:0 0 6px;">胴体: ${escapeHtml(core.name)} / 頭部: ${escapeHtml(head.name)}</p>
     <p class="muted" style="margin:0 0 6px;">右腕: ${escapeHtml(rArm.name)} / 左腕: ${escapeHtml(lArm.name)}</p>
@@ -318,8 +372,11 @@ function renderPreview() {
       <div class="stat-box"><div class="stat-label">移動力</div><div class="stat-value">${move}</div></div>
     </div>
   `;
-  els.saveBuildBtn.disabled = false;
-  els.saveAsNewBtn.disabled = false;
+  if (state.masterOk) {
+    els.saveBuildBtn.disabled = false;
+    els.saveAsNewBtn.disabled = false;
+    els.exportJsonBtn.disabled = false;
+  }
 }
 
 function renderSavedBuilds() {
@@ -329,26 +386,34 @@ function renderSavedBuilds() {
     return;
   }
   els.savedList.innerHTML = saved
-    .map((b) => `
-      <div class="saved-item">
-        <div>
-          <div class="saved-item-title">${escapeHtml(b.name || "名称未設定ゴーレム")}</div>
-          <div class="muted">${escapeHtml(b.tactic || "")}</div>
+    .map((b) => {
+      const tacticText = normalizeTactic(b.tactic);
+      return `
+        <div class="saved-item">
+          <div>
+            <div class="saved-item-title">${escapeHtml(b.name || "名称未設定ゴーレム")}</div>
+            <div class="muted">${escapeHtml(tacticText)}</div>
+          </div>
+          <div class="saved-item-actions">
+            <button type="button" class="btn btn-secondary btn-sm" data-load-id="${b.id}" ${state.masterOk ? "" : "disabled"}>読込</button>
+            <button type="button" class="btn btn-danger btn-sm" data-del-id="${b.id}" ${state.masterOk ? "" : "disabled"}>削除</button>
+          </div>
         </div>
-        <div class="saved-item-actions">
-          <button type="button" class="btn btn-secondary btn-sm" data-load-id="${b.id}">読込</button>
-          <button type="button" class="btn btn-danger btn-sm" data-del-id="${b.id}">削除</button>
-        </div>
-      </div>
-    `)
+      `;
+    })
     .join("");
+
+  if (!state.masterOk) return;
 
   els.savedList.querySelectorAll("[data-load-id]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const target = loadSavedBuilds().find((x) => x.id === btn.dataset.loadId);
       if (!target) return;
-      state.draft = { ...target };
-      els.golemName.value = state.draft.name || "";
+      state.draft = {
+        ...target,
+        tactic: normalizeTactic(target.tactic)
+      };
+      if (els.golemName) els.golemName.value = state.draft.name || "";
       normalizeDraftConstraints();
       renderAll();
       showToast("読み込みました");
@@ -374,12 +439,15 @@ function escapeHtml(str) {
 }
 
 function applyPresetById(presetId) {
-  const p = PRESETS.find((x) => x.id === presetId);
+  const presets = getAvailablePresets();
+  const p = presets.find((x) => x.id === presetId);
   if (!p || !state.masterData) return;
   const { byId } = state.masterData;
+  const nextName = p.golemName || p.name || "名称未設定ゴーレム";
+
   state.draft = {
     id: null,
-    name: p.golemName,
+    name: nextName,
     core: byId[p.core] ? p.core : state.draft.core,
     head: byId[p.head] ? p.head : state.draft.head,
     rightArm: byId[p.rightArm] ? p.rightArm : state.draft.rightArm,
@@ -388,9 +456,9 @@ function applyPresetById(presetId) {
     leftWeapon: p.leftWeapon && byId[p.leftWeapon] ? p.leftWeapon : "",
     rightLeg: byId[p.rightLeg] ? p.rightLeg : state.draft.rightLeg,
     leftLeg: byId[p.leftLeg] ? p.leftLeg : state.draft.leftLeg,
-    tactic: p.tactic
+    tactic: normalizeTactic(p.tactic)
   };
-  els.golemName.value = state.draft.name;
+  if (els.golemName) els.golemName.value = state.draft.name;
   normalizeDraftConstraints();
   renderAll();
   showToast(`プリセット「${p.name}」を反映しました`);
@@ -401,6 +469,8 @@ function renderAll() {
     clearBlankBuilder();
     return;
   }
+
+  setControlsLocked(false);
 
   const parts = state.masterData.parts;
   const byId = state.masterData.byId;
@@ -423,15 +493,26 @@ function renderAll() {
 
   normalizeDraftConstraints();
 
+  const presets = getAvailablePresets();
   if (els.presetSelect) {
     const prev = els.presetSelect.value;
-    els.presetSelect.innerHTML = PRESETS.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
-    if (prev && PRESETS.some((p) => p.id === prev)) els.presetSelect.value = prev;
+    els.presetSelect.innerHTML = presets
+      .map((p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`)
+      .join("");
+    if (prev && presets.some((p) => p.id === prev)) {
+      els.presetSelect.value = prev;
+    } else if (presets[0]) {
+      els.presetSelect.value = presets[0].id;
+    }
   }
   if (els.applyPresetBtn) els.applyPresetBtn.disabled = false;
 
-  els.tacticSelect.innerHTML = TACTICS.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
-  els.tacticSelect.value = state.draft.tactic || TACTICS[0];
+  if (els.tacticSelect) {
+    els.tacticSelect.innerHTML = TACTICS
+      .map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
+      .join("");
+    els.tacticSelect.value = normalizeTactic(state.draft.tactic);
+  }
 
   renderList(els.coreList, cores, state.draft.core, (id) => {
     state.draft.core = id;
@@ -581,13 +662,15 @@ async function applyMasterLoadResult(res) {
 
 function bindEvents() {
   els.golemName?.addEventListener("input", (e) => {
+    if (!state.masterOk) return;
     state.draft.name = e.target.value;
-    if (state.masterOk) renderPreview();
+    renderPreview();
   });
 
   els.tacticSelect?.addEventListener("change", (e) => {
-    state.draft.tactic = e.target.value;
-    if (state.masterOk) renderPreview();
+    if (!state.masterOk) return;
+    state.draft.tactic = normalizeTactic(e.target.value);
+    renderPreview();
   });
 
   els.applyPresetBtn?.addEventListener("click", () => {
@@ -597,27 +680,41 @@ function bindEvents() {
 
   els.saveBuildBtn?.addEventListener("click", () => {
     if (!state.masterOk) return;
-    const saved = saveCustomBuild({ ...state.draft, name: state.draft.name.trim() || "名称未設定ゴーレム" });
+    const normalizedDraft = {
+      ...state.draft,
+      name: (state.draft.name || "").trim() || "名称未設定ゴーレム",
+      tactic: normalizeTactic(state.draft.tactic)
+    };
+    const saved = saveCustomBuild(normalizedDraft);
     state.draft.id = saved.id;
+    state.draft.tactic = normalizeTactic(saved.tactic);
     renderSavedBuilds();
     showToast(`「${saved.name}」を保存しました`);
   });
 
   els.saveAsNewBtn?.addEventListener("click", () => {
     if (!state.masterOk) return;
-    const baseName = state.draft.name.trim() || "名称未設定ゴーレム";
-    const saved = saveCustomBuild({ ...state.draft, id: `custom_${Date.now()}`, name: `${baseName} コピー` });
+    const baseName = (state.draft.name || "").trim() || "名称未設定ゴーレム";
+    const saved = saveCustomBuild({
+      ...state.draft,
+      id: `custom_${Date.now()}`,
+      name: `${baseName} コピー`,
+      tactic: normalizeTactic(state.draft.tactic)
+    });
     state.draft.id = saved.id;
-    els.golemName.value = saved.name;
+    state.draft.name = saved.name;
+    state.draft.tactic = normalizeTactic(saved.tactic);
+    if (els.golemName) els.golemName.value = saved.name;
     renderSavedBuilds();
     showToast(`「${saved.name}」として保存しました`);
   });
 
   els.exportJsonBtn?.addEventListener("click", () => {
     if (!state.masterOk) return;
+    const tacticValue = normalizeTactic(state.draft.tactic);
     const payload = {
       version: "1.1",
-      name: state.draft.name.trim() || "名称未設定ゴーレム",
+      name: (state.draft.name || "").trim() || "名称未設定ゴーレム",
       parts: {
         core: state.draft.core,
         head: state.draft.head,
@@ -628,7 +725,7 @@ function bindEvents() {
         rightLeg: state.draft.rightLeg,
         leftLeg: state.draft.leftLeg
       },
-      tactic: state.draft.tactic
+      tactic: tacticValue
     };
     navigator.clipboard?.writeText(JSON.stringify(payload, null, 2)).then(
       () => showToast("ビルドJSONをコピーしました"),
@@ -649,6 +746,7 @@ function bindEvents() {
 }
 
 async function init() {
+  setControlsLocked(true);
   bindEvents();
   const res = await loadGolemMasterData();
   await applyMasterLoadResult(res);
