@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ゴーレムアリーナ | Golem Series</title>
+  <link rel="stylesheet" href="./css/common.css" />
+  <link rel="stylesheet" href="./css/arena.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-area">
+        <div>
+          <h1 class="brand-title">ゴーレムアリーナ</h1>
+          <p class="brand-subtitle">プリセット機体＆自作ゴーレムによる1vs1オートバトル</p>
+        </div>
+      </div>
+      <nav class="nav-links" aria-label="画面切り替え">
+        <a class="nav-link" href="./builder.html">ゴーレムビルダー</a>
+        <a class="nav-link is-active" href="./arena.html">ゴーレムアリーナ</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="status-bar">
+      <div>
+        <span id="data-status" class="status-badge is-fallback">データ初期化中...</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <a href="./builder.html" class="btn btn-secondary btn-sm">+ 新しい機体を作る</a>
+        <button id="reload-data-btn" type="button" class="btn btn-secondary btn-sm">
+          マスターデータ再読込
+        </button>
+      </div>
+    </div>
+
+    <section class="panel">
+      <h2 class="panel-title">対戦カード選択</h2>
+
+      <div class="fighter-select-grid">
+        <div>
+          <label for="fighter-a-select">A軍 ゴーレム</label>
+          <select id="fighter-a-select"></select>
+          <div id="fighter-a-card" class="fighter-card"></div>
+        </div>
+
+        <div class="vs-badge">VS</div>
+
+        <div>
+          <label for="fighter-b-select">B軍 ゴーレム</label>
+          <select id="fighter-b-select"></select>
+          <div id="fighter-b-card" class="fighter-card"></div>
+        </div>
+      </div>
+
+      <div class="arena-controls">
+        <button id="start-battle-btn" type="button" class="btn btn-primary">バトル開始</button>
+        <button id="random-match-btn" type="button" class="btn btn-secondary">ランダム対戦</button>
+      </div>
+
+      <div id="battle-summary"></div>
+      <div id="battle-log" class="battle-log">
+        <p class="muted" style="margin:0;">「バトル開始」を押すと、ターンごとの戦闘ログがここに表示されます。</p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./js/arenaApp.js"></script>
+</body>
+</html>

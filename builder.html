@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ハクスラ・フィットネスRPG</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="status-header">
+      <div class="level-box">
+        <span class="badge">Lv.<span id="ui-level">1</span></span>
+        <span class="exp-text">EXP: <span id="ui-exp">0</span> / <span id="ui-next-exp">100</span></span>
+      </div>
+      <div class="stone-box">
+        💎 強化石: <strong id="ui-stones">0</strong>個
+      </div>
+    </header>
+
+    <!-- 画面切り替えナビゲーション -->
+    <nav class="main-nav">
+      <button id="nav-adventure" class="nav-btn active" onclick="switchScreen('adventure')">⚔️ 冒険・記録</button>
+      <button id="nav-record" class="nav-btn" onclick="switchScreen('record')">📖 図鑑・累計実績</button>
+    </nav>
+
+    <!-- 画面1：冒険画面 -->
+    <main id="screen-adventure">
+      <section class="card sleep-card">
+        <div class="card-title">
+          <span>💤 今日のコンディション（前日の睡眠）</span>
+          <span id="ui-buff-badge" class="buff-badge">未記録</span>
+        </div>
+        <div class="sleep-buttons">
+          <button class="btn-sleep" onclick="handleSleep(5.0)">6時間未満<br><small>バフなし</small></button>
+          <button class="btn-sleep" onclick="handleSleep(6.5)">6〜7時間<br><small>効率+15%</small></button>
+          <button class="btn-sleep" onclick="handleSleep(8.0)">7.5時間以上<br><small>効率+30%</small></button>
+        </div>
+      </section>
+
+      <section class="card equip-card">
+        <div class="card-title">⚔️ 現在の装備（タップで石強化）</div>
+        <div class="equip-list">
+          <div class="equip-item">
+            <div class="equip-info">
+              <span class="slot-label">武器</span>
+              <strong id="eq-weapon-name">初期の木の棒</strong>
+              <small id="eq-weapon-opt">性能: 10 / なし</small>
+            </div>
+            <button class="btn-upgrade" onclick="handleUpgrade('weapon')">強化<br><small id="cost-weapon">5石</small></button>
+          </div>
+          <div class="equip-item">
+            <div class="equip-info">
+              <span class="slot-label">防具</span>
+              <strong id="eq-armor-name">普段着のジャージ</strong>
+              <small id="eq-armor-opt">性能: 10 / なし</small>
+            </div>
+            <button class="btn-upgrade" onclick="handleUpgrade('armor')">強化<br><small id="cost-armor">5石</small></button>
+          </div>
+          <div class="equip-item">
+            <div class="equip-info">
+              <span class="slot-label">お守り</span>
+              <strong id="eq-charm-name">お守りなし</strong>
+              <small id="eq-charm-opt">性能: 5 / なし</small>
+            </div>
+            <button class="btn-upgrade" onclick="handleUpgrade('charm')">強化<br><small id="cost-charm">5石</small></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card action-card">
+        <div class="card-title">
+          <span>🏃 今日の運動をまとめて記録</span>
+          <small style="color: #f97316; font-weight: bold;">2種目以上でコンボ報酬！</small>
+        </div>
+
+        <div class="workout-row">
+          <div class="row-header">
+            <strong>🚶 ウォーキング <small>（探索・防具/お守り）</small></strong>
+            <div class="mini-input">
+              <input type="number" id="input-walking" value="0" min="0" max="999"> <span>分</span>
+            </div>
+          </div>
+          <div class="row-btns">
+            <button class="btn-quick" onclick="addVal('walking', 10)">+10分</button>
+            <button class="btn-quick" onclick="addVal('walking', 20)">+20分</button>
+            <button class="btn-quick" onclick="addVal('walking', 30)">+30分</button>
+            <button class="btn-quick btn-clear" onclick="setVal('walking', 0)">0</button>
+          </div>
+        </div>
+
+        <div class="workout-row">
+          <div class="row-header">
+            <strong>🧘 ストレッチ <small>（基礎戦闘・武器）</small></strong>
+            <div class="mini-input">
+              <input type="number" id="input-stretch" value="0" min="0" max="999"> <span>分</span>
+            </div>
+          </div>
+          <div class="row-btns">
+            <button class="btn-quick" onclick="addVal('stretch', 5)">+5分</button>
+            <button class="btn-quick" onclick="addVal('stretch', 10)">+10分</button>
+            <button class="btn-quick" onclick="addVal('stretch', 15)">+15分</button>
+            <button class="btn-quick btn-clear" onclick="setVal('stretch', 0)">0</button>
+          </div>
+        </div>
+
+        <div id="row-batting" class="workout-row locked-row">
+          <div class="row-header">
+            <strong id="label-batting">🔒 バッティング <small>（肩回復後に解禁）</small></strong>
+            <div class="mini-input">
+              <input type="number" id="input-batting" value="0" min="0" max="999" disabled> <span>球</span>
+            </div>
+          </div>
+          <div class="row-btns" id="btns-batting">
+            <button class="btn-quick" onclick="addVal('batting', 20)">+20球</button>
+            <button class="btn-quick" onclick="addVal('batting', 40)">+40球</button>
+            <button class="btn-quick" onclick="addVal('batting', 60)">+60球</button>
+            <button class="btn-quick btn-clear" onclick="setVal('batting', 0)">0</button>
+          </div>
+        </div>
+
+        <div class="unlock-bar">
+          <label class="unlock-label">
+            <input type="checkbox" id="batting-unlock-check" onchange="toggleBattingLock()">
+            肩の回復完了！バッティングを解禁する
+          </label>
+        </div>
+
+        <button class="btn-go" onclick="handleDailyAdventure()">まとめて冒険に出発する！</button>
+      </section>
+
+      <section class="card log-card">
+        <div class="card-title">📜 冒険ログ</div>
+        <div id="log-container" class="log-box">
+          <p class="log-entry">1日の終わりに運動量をまとめて入力し、冒険へ出発しましょう！</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- 画面2：図鑑・累計実績画面 -->
+    <section id="screen-record" style="display: none;">
+      <div class="card">
+        <div class="card-title">📊 これまでの累計運動記録</div>
+        <div class="stats-grid">
+          <div class="stat-box"><small>総冒険回数</small><strong id="stat-days">0 回</strong></div>
+          <div class="stat-box"><small>累計歩行距離</small><strong id="stat-distance">0.00 km</strong></div>
+          <div class="stat-box"><small>累計ストレッチ</small><strong id="stat-stretch">0 分</strong></div>
+          <div class="stat-box"><small>累計バッティング</small><strong id="stat-batting">0 球</strong></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span>📖 発見した装備図鑑</span>
+          <span id="catalog-count" class="buff-badge active">0 種類発見</span>
+        </div>
+        <div id="catalog-list" class="catalog-box"></div>
+      </div>
+    </section>
+
+    <!-- 端末間データ共有フッター -->
+    <footer class="backup-footer">
+      <details>
+        <summary>🔄 スマホ・PC間のデータ引き継ぎ（URL同期）</summary>
+        <p style="margin-top: 6px; font-size: 0.75rem;">発行されたURLをLINEやメモに送り、別端末で開くだけで引き継げます。</p>
+        <div class="backup-controls">
+          <button class="btn-sub" onclick="copySyncUrl()">🔗 引き継ぎ用URLをコピー</button>
+          <button class="btn-sub" style="color: #ef4444; border-color: #fca5a5;" onclick="resetSaveData()">🗑️ データを初期化</button>
+        </div>
+      </details>
+    </footer>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>

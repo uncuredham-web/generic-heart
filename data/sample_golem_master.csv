@@ -1,0 +1,13 @@
+type,id,name,slot_or_role,cost,hp,atk,def,spd,skillId,description
+core,core_balanced,アイアン・コア,バランス型,25,140,28,22,18,,安定した耐久と攻撃力を備える標準コア。
+core,core_striker,ブレイズ・コア,速攻アタッカー,30,115,38,15,28,,高い攻撃力と素早さで先手を取りやすい攻撃特化コア。
+core,core_bastion,バスティオン・コア,重装タンク,30,185,22,32,12,,圧倒的なHPと防御力で相手の猛攻を受け止める重装コア。
+part,arm_boulder,パイルバンカー腕,arm,20,0,14,0,-2,power_smash,重撃スキル「パワー・スマッシュ」を解放する破砕腕。
+part,arm_twin_claw,ツインブレード腕,arm,22,0,10,0,6,rapid_slash,素早さを高め、連続攻撃「ラピッド・スラッシュ」を解放。
+part,arm_aegis_shield,イージス・ガントレット,arm,18,20,0,12,0,guard_pulse,防御力を強化し、防御・修復「ガード・パルス」を解放。
+part,leg_crawler,ヘビー・キャタピラ,leg,20,35,0,10,-4,,足回りを犠牲に重装甲と高耐久を得る履帯脚部。
+part,leg_hopper,スプリング・レッグ,leg,18,0,4,0,12,,跳躍機構により行動順を上げやすい軽量脚部。
+part,leg_strider,ストライダー脚部,leg,20,20,0,6,5,,機動力と耐久力のバランスに優れた二足歩行脚部。
+part,chip_overclock,オーバークロック・チップ,chip,15,0,8,0,5,,演算限界を引き上げ、火力と行動速度を底上げする。
+part,chip_nano_repair,ナノリペア・チップ,chip,16,25,0,6,0,,自己修復ルーチンを組み込み、継戦能力を高める。
+part,chip_precision,プレシジョン・チップ,chip,14,0,6,4,4,,弱点照準と姿勢制御を最適化する万能チップ。
