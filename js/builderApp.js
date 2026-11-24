@@ -32,7 +32,6 @@ const els = {
   reloadDataBtn: document.getElementById("reload-data-btn"),
   golemName: document.getElementById("golem-name"),
   tacticSelect: document.getElementById("tactic-select"),
-  presetSelect: document.getElementById("preset-select"),
   bodyHeadList: document.getElementById("body-head-list"),
   armList: document.getElementById("arm-list"),
   legList: document.getElementById("leg-list"),
@@ -61,7 +60,6 @@ function clearBlankBuilder() {
   els.armList.innerHTML = "";
   els.legList.innerHTML = "";
   els.weaponList.innerHTML = "";
-  if (els.presetSelect) els.presetSelect.innerHTML = "";
   els.previewCard.innerHTML = "";
   els.savedList.innerHTML = "";
   els.saveBuildBtn.disabled = true;
@@ -249,17 +247,17 @@ async function applyMasterLoadResult(res) {
 }
 
 function bindEvents() {
-  els.golemName.addEventListener("input", (e) => {
+  els.golemName?.addEventListener("input", (e) => {
     state.draft.name = e.target.value;
     if (state.masterOk) renderPreview();
   });
 
-  els.tacticSelect.addEventListener("change", (e) => {
+  els.tacticSelect?.addEventListener("change", (e) => {
     state.draft.tactic = e.target.value;
     if (state.masterOk) renderPreview();
   });
 
-  els.saveBuildBtn.addEventListener("click", () => {
+  els.saveBuildBtn?.addEventListener("click", () => {
     if (!state.masterOk) return;
     const saved = saveCustomBuild({ ...state.draft, name: state.draft.name.trim() || "名称未設定ゴーレム" });
     state.draft.id = saved.id;
@@ -267,7 +265,7 @@ function bindEvents() {
     showToast(`「${saved.name}」を保存しました`);
   });
 
-  els.saveAsNewBtn.addEventListener("click", () => {
+  els.saveAsNewBtn?.addEventListener("click", () => {
     if (!state.masterOk) return;
     const baseName = state.draft.name.trim() || "名称未設定ゴーレム";
     const saved = saveCustomBuild({ ...state.draft, id: `custom_${Date.now()}`, name: `${baseName} コピー` });
@@ -277,7 +275,7 @@ function bindEvents() {
     showToast(`「${saved.name}」として保存しました`);
   });
 
-  els.exportJsonBtn.addEventListener("click", () => {
+  els.exportJsonBtn?.addEventListener("click", () => {
     if (!state.masterOk) return;
     const payload = {
       version: "1.1",
@@ -300,7 +298,7 @@ function bindEvents() {
     );
   });
 
-  els.reloadDataBtn.addEventListener("click", async () => {
+  els.reloadDataBtn?.addEventListener("click", async () => {
     const res = await loadGolemMasterData();
     await applyMasterLoadResult(res);
     showToast(res.message);
