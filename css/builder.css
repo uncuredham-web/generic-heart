@@ -22,6 +22,8 @@
   top: 76px;
   align-self: start;
   min-width: 0;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
 }
 
 @media (max-width: 1120px) {
@@ -30,6 +32,8 @@
   }
   .builder-right-sticky {
     position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 }
 

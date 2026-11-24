@@ -512,19 +512,29 @@ function renderPreview() {
     clearRarityViolationAlert();
   }
 
+  const legSummaryHtml = isDualLeg
+    ? `<p class="muted" style="margin:0 0 4px;"><strong>脚部:</strong> ${escapeHtml(rLeg.name)}（両脚占有）</p>`
+    : `<p class="muted" style="margin:0 0 4px;"><strong>右脚:</strong> ${escapeHtml(rLeg.name)}</p>
+       <p class="muted" style="margin:0 0 4px;"><strong>左脚:</strong> ${escapeHtml(lLeg.name)}</p>`;
+
   els.previewCard.innerHTML = `
     <div class="preview-header">
       <h3 class="preview-name">${escapeHtml(state.draft.name || "名称未設定ゴーレム")}</h3>
       <span class="tag">${escapeHtml(tacticLabel)}</span>
     </div>
-    <p class="muted" style="margin:0 0 6px;">
+    <p class="muted" style="margin:0 0 8px;">
       レアリティ制限：レジェンド ${limitCheck.legendCount}/${RARITY_LIMITS.legendMax} ・ レア ${limitCheck.rareCount}/${RARITY_LIMITS.rareMax}
-      ${limitCheck.ok ? "" : `<span style="color:#f87171;font-weight:700;">（制限超過：保存/出力不可）</span>`}
+      ${limitCheck.ok ? "" : `<br><span style="color:#f87171;font-weight:700;">（制限超過：保存/出力不可）</span>`}
     </p>
-    <p class="muted" style="margin:0 0 6px;">胴体: ${escapeHtml(core.name)} / 頭部: ${escapeHtml(head.name)}</p>
-    <p class="muted" style="margin:0 0 6px;">右腕: ${escapeHtml(rArm.name)} / 左腕: ${escapeHtml(lArm.name)}</p>
-    <p class="muted" style="margin:0 0 6px;">脚部: ${escapeHtml(isDualLeg ? rLeg.name : `${rLeg.name} + ${lLeg.name}`)}</p>
-    <p class="muted" style="margin:0 0 10px;">右手: ${escapeHtml(rWeap ? rWeap.name : "なし")} / 左手: ${escapeHtml(lWeap ? lWeap.name : "なし")}</p>
+    <div class="preview-equip-list" style="margin-bottom:10px; line-height:1.5;">
+      <p class="muted" style="margin:0 0 4px;"><strong>胴体:</strong> ${escapeHtml(core.name)}</p>
+      <p class="muted" style="margin:0 0 4px;"><strong>頭部:</strong> ${escapeHtml(head.name)}</p>
+      <p class="muted" style="margin:0 0 4px;"><strong>右腕:</strong> ${escapeHtml(rArm.name)}</p>
+      <p class="muted" style="margin:0 0 4px;"><strong>左腕:</strong> ${escapeHtml(lArm.name)}</p>
+      ${legSummaryHtml}
+      <p class="muted" style="margin:0 0 4px;"><strong>右手:</strong> ${escapeHtml(rWeap ? rWeap.name : "なし")}</p>
+      <p class="muted" style="margin:0;"><strong>左手:</strong> ${escapeHtml(lWeap ? lWeap.name : "なし")}</p>
+    </div>
     <div class="stats-grid">
       <div class="stat-box"><div class="stat-label">胴体耐久</div><div class="stat-value">${core.hp}</div></div>
       <div class="stat-box"><div class="stat-label">最大魔力</div><div class="stat-value">${core.maxMp}</div></div>
