@@ -217,55 +217,80 @@ export function runAutoBattle(build1, build2, masterData) {
   logs.push(`[T1] ${f1.name} (耐久:${f1.hp} / 魔力:${f1.mp}) vs ${f2.name} (耐久:${f2.hp} / 魔力:${f2.mp})`);
 
   for (let turn = 1; turn <= maxTurns; turn += 1) {
+    if (f1.hp <= 0 || f2.hp <= 0) break;
+
     if (turn > 1) {
       logs.push(`--- ターン ${turn}（距離:${distance}）---`);
     }
 
-    for (const [actor, defender] of [
-      [f1, f2],
-      [f2, f1]
-    ]) {
-      if (actor.hp <= 0 || defender.hp <= 0) break;
+    // 1. 毎ターン魔力回復
+    for (const f of [f1, f2]) {
+      f.mp = Math.min(f.maxMp, f.mp + f.mpRegen);
+    }
 
-      actor.mp = Math.min(actor.maxMp, actor.mp + actor.mpRegen);
-
+    // 2. 行動決定
+    const plans = [f1, f2].map((actor) => {
       const moveStep = Math.max(1, actor.move || 1);
+      let moveDelta = 0;
+      let moveAction = null;
+
       if (actor.tactic === "距離をとって戦え") {
         if (distance < 3) {
-          distance += moveStep;
-          logs.push(`・${actor.name} は距離をとって後退（距離:${distance} / 魔力:${actor.mp}）`);
+          moveDelta = moveStep;
+          moveAction = "retreat";
         }
       } else if (distance > 1) {
         const nextDist = Math.max(1, distance - moveStep);
         if (nextDist !== distance) {
-          distance = nextDist;
-          logs.push(`・${actor.name} が接近（距離:${distance} / 魔力:${actor.mp}）`);
+          moveDelta = nextDist - distance;
+          moveAction = "advance";
         }
       }
 
       const attacks = selectAttackQueue(actor, distance);
-      if (attacks.length === 0) {
-        logs.push(`・${actor.name} は攻撃できる武器がないか魔力不足のため待機（魔力:${actor.mp}）`);
+      return { actor, moveDelta, moveAction, attacks };
+    });
+
+    // 3. 同時移動
+    const totalMoveDelta = plans.reduce((sum, p) => sum + p.moveDelta, 0);
+    if (totalMoveDelta !== 0) {
+      distance = Math.max(1, distance + totalMoveDelta);
+    }
+    for (const p of plans) {
+      if (p.moveAction === "retreat") {
+        logs.push(`・${p.actor.name} は距離をとって後退（距離:${distance} / 魔力:${p.actor.mp}）`);
+      } else if (p.moveAction === "advance") {
+        logs.push(`・${p.actor.name} が接近（距離:${distance} / 魔力:${p.actor.mp}）`);
+      }
+    }
+
+    // 4. 同時攻撃（同ターン中の相打ちも両方反映させるため、途中で break せずお互いの攻撃を処理）
+    for (const p of plans) {
+      const defender = p.actor === f1 ? f2 : f1;
+      if (p.attacks.length === 0) {
+        logs.push(`・${p.actor.name} は攻撃できる武器がないか魔力不足のため待機（魔力:${p.actor.mp}）`);
         continue;
       }
 
-      for (const weapon of attacks) {
-        if (defender.hp <= 0) break;
-        if (getWeaponCost(weapon) > actor.mp) {
-          logs.push(`・${actor.name} は魔力不足で「${weapon.name}」の追撃を見送った（残MP:${actor.mp}）`);
+      for (const weapon of p.attacks) {
+        if (getWeaponCost(weapon) > p.actor.mp) {
+          logs.push(`・${p.actor.name} は魔力不足で「${weapon.name}」の追撃を見送った（残MP:${p.actor.mp}）`);
           break;
         }
-        executeSingleAttack(actor, defender, weapon, logs);
+        executeSingleAttack(p.actor, defender, weapon, logs);
       }
-
-      if (defender.hp <= 0) break;
     }
 
     if (f1.hp <= 0 || f2.hp <= 0) break;
   }
 
   let winnerName = null;
-  if (f1.hp > 0 && f2.hp <= 0) {
+  let isDrawByKo = false;
+
+  if (f1.hp <= 0 && f2.hp <= 0) {
+    winnerName = null;
+    isDrawByKo = true;
+  } else if (f1.hp > 0 && f2.hp <= 0) {
     winnerName = f1.name;
   } else if (f2.hp > 0 && f1.hp <= 0) {
     winnerName = f2.name;
@@ -273,6 +298,13 @@ export function runAutoBattle(build1, build2, masterData) {
     winnerName = f1.hp > f2.hp ? f1.name : f2.name;
   }
 
-  logs.push(winnerName ? `決着：${winnerName} の勝利！` : "決着：規定ターン終了（引き分け）");
+  if (winnerName) {
+    logs.push(`決着：${winnerName} の勝利！`);
+  } else if (isDrawByKo) {
+    logs.push("決着：相打ち（引き分け）！");
+  } else {
+    logs.push("決着：規定ターン終了（引き分け）");
+  }
+
   return { winnerName, logs };
 }
