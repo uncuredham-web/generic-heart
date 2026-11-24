@@ -77,7 +77,8 @@ export function isDualLegPart(part) {
     t.includes("両脚") ||
     t.includes("両脚占有") ||
     t.includes("ユニット") ||
-    t.includes("多脚")
+    t.includes("多脚") ||
+    t.includes("ホバー")
   );
 }
 
@@ -103,6 +104,12 @@ function hasMoveAttackPenetration(fighter) {
 }
 
 function hasFloatBonus(fighter) {
+  const rLeg = fighter.parts?.rightLeg;
+  const lLeg = fighter.parts?.leftLeg;
+  const legsAlive = fighter.isDualLeg
+    ? Boolean(rLeg && !rLeg.broken)
+    : Boolean((rLeg && !rLeg.broken) || (lLeg && !lLeg.broken));
+  if (!legsAlive) return false;
   return fighter.partsList.some((p) => partText(p).includes("回避率UP"));
 }
 
@@ -153,6 +160,11 @@ function getWeaponAcc(part) {
   return Number(part.acc ?? part.accuracy ?? 0) || 0;
 }
 
+function getPartEvade(part) {
+  if (!part) return 0;
+  return Number(part.evade ?? part.eva ?? 0) || 0;
+}
+
 function createPartState(part, fallbackName, fallbackHp, baseMove = 0, partKey = "") {
   const hp = Math.max(1, Number(part?.hp) || fallbackHp);
   return {
@@ -166,6 +178,7 @@ function createPartState(part, fallbackName, fallbackHp, baseMove = 0, partKey =
     maxHp: hp,
     move: Number(part?.move) || baseMove,
     acc: Number(part?.acc) || 0,
+    evade: getPartEvade(part),
     broken: false
   };
 }
@@ -198,11 +211,11 @@ export function calcTotalPartsHp(fighter) {
 export function calcFighterStats(build = {}, masterData = {}) {
   const byId = masterData?.byId || {};
   const corePart = byId[build.core] || { name: "クレイコア", hp: 300, maxMp: 100, mpRegen: 15, baseCost: 5 };
-  const headPart = byId[build.head] || { name: "ストーンヘッド", hp: 100, baseCost: 1, acc: 0 };
-  const rArmPart = byId[build.rightArm] || { name: "ウッドアーム", hp: 90, baseCost: 1, acc: 0 };
-  const lArmPart = byId[build.leftArm] || { name: "ウッドアーム", hp: 90, baseCost: 1, acc: 0 };
-  const rLegPart = byId[build.rightLeg] || { name: "ストーンレッグ", hp: 110, baseCost: 2, move: 1 };
-  const lLegPart = byId[build.leftLeg] || { name: "ストーンレッグ", hp: 110, baseCost: 2, move: 1 };
+  const headPart = byId[build.head] || { name: "ストーンヘッド", hp: 100, baseCost: 1, acc: 0, evade: 0 };
+  const rArmPart = byId[build.rightArm] || { name: "ウッドアーム", hp: 90, baseCost: 1, acc: 0, evade: 0 };
+  const lArmPart = byId[build.leftArm] || { name: "ウッドアーム", hp: 90, baseCost: 1, acc: 0, evade: 0 };
+  const rLegPart = byId[build.rightLeg] || { name: "ストーンレッグ", hp: 110, baseCost: 2, move: 1, evade: 5 };
+  const lLegPart = byId[build.leftLeg] || { name: "ストーンレッグ", hp: 110, baseCost: 2, move: 1, evade: 5 };
   const rWeapPart = build.rightWeapon ? (byId[build.rightWeapon] || null) : null;
   const lWeapPart = build.leftWeapon ? (byId[build.leftWeapon] || null) : null;
 
@@ -242,6 +255,7 @@ export function calcFighterStats(build = {}, masterData = {}) {
       hand: isDualWeapon ? "両手" : "右手",
       hp: Math.max(1, Number(rWeapPart.hp) || 120),
       maxHp: Math.max(1, Number(rWeapPart.hp) || 120),
+      evade: getPartEvade(rWeapPart),
       broken: false
     });
   }
@@ -251,6 +265,7 @@ export function calcFighterStats(build = {}, masterData = {}) {
       hand: "左手",
       hp: Math.max(1, Number(lWeapPart.hp) || 120),
       maxHp: Math.max(1, Number(lWeapPart.hp) || 120),
+      evade: getPartEvade(lWeapPart),
       broken: false
     });
   }
@@ -345,6 +360,7 @@ export function calcFighterStats(build = {}, masterData = {}) {
 
   fighter.move = calcCurrentMove(fighter);
   fighter.accBonus = calcCurrentAccBonus(fighter);
+  fighter.legEvadeBonus = calcCurrentLegEvadeBonus(fighter);
   return fighter;
 }
 
@@ -370,6 +386,23 @@ export function canUseMoveActions(fighter) {
   const rAlive = Boolean(rLeg && !rLeg.broken);
   const lAlive = Boolean(lLeg && !lLeg.broken);
   return rAlive || lAlive;
+}
+
+export function calcCurrentLegEvadeBonus(fighter) {
+  if (!canUseMoveActions(fighter)) {
+    return 0;
+  }
+
+  const rLeg = fighter.parts.rightLeg;
+  const lLeg = fighter.parts.leftLeg;
+
+  if (fighter.isDualLeg) {
+    return rLeg && !rLeg.broken ? getPartEvade(rLeg) : 0;
+  }
+
+  const rEva = rLeg && !rLeg.broken ? getPartEvade(rLeg) : 0;
+  const lEva = lLeg && !lLeg.broken ? getPartEvade(lLeg) : 0;
+  return rEva + lEva;
 }
 
 export function canUsePrecisionAttack(fighter) {
@@ -506,6 +539,7 @@ function choosePreferredTargetPart(defender) {
 function decideTurnAction(actor, defender, currentDistance) {
   actor.move = calcCurrentMove(actor);
   actor.accBonus = calcCurrentAccBonus(actor);
+  actor.legEvadeBonus = calcCurrentLegEvadeBonus(actor);
 
   const canMove = canUseMoveActions(actor);
   const canPrecision = canUsePrecisionAttack(actor);
@@ -631,6 +665,45 @@ function decideTurnAction(actor, defender, currentDistance) {
   }
 }
 
+function calcDefenderEvade(defender, evaMod) {
+  const legsAlive = canUseMoveActions(defender);
+  const legEvade = calcCurrentLegEvadeBonus(defender);
+
+  let shieldEvade = 0;
+  for (const s of defender.shields || []) {
+    if (!s.broken) {
+      shieldEvade += getPartEvade(s);
+    }
+  }
+
+  let headOrArmEvade = 0;
+  if (defender.parts.head && !defender.parts.head.broken) {
+    headOrArmEvade += getPartEvade(defender.parts.head);
+  }
+  if (defender.parts.rightArm && !defender.parts.rightArm.broken) {
+    headOrArmEvade += getPartEvade(defender.parts.rightArm);
+  }
+  if (!defender.isDualArm && defender.parts.leftArm && !defender.parts.leftArm.broken) {
+    headOrArmEvade += getPartEvade(defender.parts.leftArm);
+  }
+
+  // 脚部破壊時は回避率を0（脚部由来・回避ボーナスともに0）にして納得感を高める
+  if (!legsAlive) {
+    return 0;
+  }
+
+  const effectiveEvaMod = evaMod > 0 ? evaMod : evaMod;
+  const totalEvade =
+    BATTLE_CONFIG.baseEvadeRate +
+    legEvade +
+    shieldEvade +
+    headOrArmEvade +
+    (hasFloatBonus(defender) ? BATTLE_CONFIG.floatEvadeMod : 0) +
+    effectiveEvaMod;
+
+  return Math.max(BATTLE_CONFIG.minEvadeRate, Math.min(BATTLE_CONFIG.maxEvadeRate, totalEvade));
+}
+
 function calcHitChance(actor, defender, weapon, plan) {
   let accMod = 0;
   let evaMod = 0;
@@ -657,14 +730,7 @@ function calcHitChance(actor, defender, weapon, plan) {
     accMod +
     dualMod;
 
-  const defenderEvade = Math.max(
-    BATTLE_CONFIG.minEvadeRate,
-    Math.min(
-      BATTLE_CONFIG.maxEvadeRate,
-      BATTLE_CONFIG.baseEvadeRate + (hasFloatBonus(defender) ? BATTLE_CONFIG.floatEvadeMod : 0) + evaMod
-    )
-  );
-
+  const defenderEvade = calcDefenderEvade(defender, evaMod);
   const hitChance = Math.round(rawHit - defenderEvade);
   return Math.max(BATTLE_CONFIG.minHitRate, Math.min(BATTLE_CONFIG.maxHitRate, hitChance));
 }
@@ -715,9 +781,10 @@ function applyDamageToPart(defender, targetPart, rawDamage, isMagic, logs) {
       logs.push(`  → ${targetPart.name} 破壊：該当腕の武器攻撃不可`);
     } else if (targetPart.key === "rightLeg" || targetPart.key === "leftLeg") {
       defender.move = calcCurrentMove(defender);
+      defender.legEvadeBonus = calcCurrentLegEvadeBonus(defender);
       logs.push(`  → ${targetPart.name} 破壊：移動力が ${defender.move} に低下`);
       if (!canUseMoveActions(defender)) {
-        logs.push(`  → 両脚破壊：「移動に専念」「移動しながら攻撃」が選択不可`);
+        logs.push(`  → 両脚破壊：移動不可・回避率0`);
       }
     } else if (targetPart.key === "core") {
       defender.hp = 0;

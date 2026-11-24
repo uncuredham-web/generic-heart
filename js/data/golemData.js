@@ -167,6 +167,7 @@ function enrichPart(row) {
     rangeMax: rangeSpec.max,
     acc: Number(row.acc || 0),
     move: Number(row.move || 0),
+    evade: Number(row.evade || 0),
     note: row.note || "",
     isDualArm: text.includes("両腕"),
     isDualWeapon: text.includes("両手") || text.includes("両腕"),

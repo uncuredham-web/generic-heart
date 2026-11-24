@@ -5,7 +5,18 @@ import {
   PRESET_BUILDS
 } from "./data/golemData.js";
 import { loadSavedBuilds, showToast } from "./ui/storage.js";
-import { calcFighterStats, runAutoBattle } from "./rules/battleRules.js";
+import {
+  calcFighterStats,
+  runAutoBattle,
+  isDualArmPart,
+  isDualWeaponPart,
+  isDualLegPart
+} from "./rules/battleRules.js";
+
+export const RARITY_LIMITS = {
+  legendMax: 1,
+  rareMax: 2
+};
 
 const TACTICS = Array.isArray(TACTIC_OPTIONS) && TACTIC_OPTIONS.length > 0
   ? TACTIC_OPTIONS
@@ -34,42 +45,73 @@ function normalizeTactic(tactic) {
 
 const FALLBACK_BUILDS = [
   {
-    id: "preset_knight",
+    id: "preset_iron_knight",
     name: "アイアンナイト",
+    golemName: "アイアンナイト",
     core: "C02",
     head: "H01",
     rightArm: "A02",
     leftArm: "A01",
-    rightWeapon: "W01",
-    leftWeapon: "S02",
     rightLeg: "L01",
     leftLeg: "L01",
+    rightWeapon: "W01",
+    leftWeapon: "S02",
     tactic: "確実に当てて押し切れ"
   },
   {
-    id: "preset_mage",
-    name: "アークメイジ",
+    id: "preset_bronze_hammer",
+    name: "ブロンズハンマー",
+    golemName: "ブロンズハンマー",
+    core: "C02",
+    head: "H02",
+    rightArm: "A02",
+    leftArm: "A02",
+    rightLeg: "L01",
+    leftLeg: "L01",
+    rightWeapon: "W03",
+    leftWeapon: "",
+    tactic: "確実に当てて押し切れ"
+  },
+  {
+    id: "preset_mana_spear",
+    name: "マナスピアシューター",
+    golemName: "マナスピアシューター",
     core: "C03",
     head: "H02",
     rightArm: "A01",
     leftArm: "A01",
-    rightWeapon: "W06",
-    leftWeapon: "W05",
     rightLeg: "L02",
     leftLeg: "L02",
+    rightWeapon: "W06",
+    leftWeapon: "W02",
     tactic: "間合いを制して翻弄せよ"
   },
   {
-    id: "preset_twin",
-    name: "ツインファング",
+    id: "preset_crystal_mage",
+    name: "クリスタルメイジ",
+    golemName: "クリスタルメイジ",
+    core: "C03",
+    head: "H01",
+    rightArm: "A01",
+    leftArm: "A02",
+    rightLeg: "L02",
+    leftLeg: "L01",
+    rightWeapon: "W05",
+    leftWeapon: "S01",
+    tactic: "間合いを制して翻弄せよ"
+  },
+  {
+    id: "preset_wind_duelist",
+    name: "ウィンドデュエリスト",
+    golemName: "ウィンドデュエリスト",
     core: "C01",
     head: "H02",
-    rightArm: "A02",
-    leftArm: "A02",
-    rightWeapon: "W01",
-    leftWeapon: "W01",
+    rightArm: "A01",
+    leftArm: "A01",
     rightLeg: "L02",
     leftLeg: "L02",
+    rightWeapon: "W01",
+    leftWeapon: "W06",
     tactic: "全力で薙ぎ払え"
   }
 ];
@@ -92,6 +134,75 @@ function getDefaultBuilds() {
     leftLeg: p.leftLeg || "",
     tactic: normalizeTactic(p.tactic)
   }));
+}
+
+/**
+ * ビルド内のレジェンド／レア個数を集計し、制限違反をチェックする
+ * 両腕・両脚・両手占有パーツはパーツ単位で1カウントとする
+ */
+export function validateBuildRarityLimits(build = {}, masterData = state.masterData) {
+  const byId = masterData?.byId || {};
+  const violations = [];
+  let legendCount = 0;
+  let rareCount = 0;
+
+  const slotEntries = [
+    { key: "core", id: build.core, label: "胴体" },
+    { key: "head", id: build.head, label: "頭部" },
+    { key: "rightArm", id: build.rightArm, label: "右腕" },
+    { key: "leftArm", id: build.leftArm, label: "左腕" },
+    { key: "rightLeg", id: build.rightLeg, label: "右脚" },
+    { key: "leftLeg", id: build.leftLeg, label: "左脚" },
+    { key: "rightWeapon", id: build.rightWeapon, label: "右手装備" },
+    { key: "leftWeapon", id: build.leftWeapon, label: "左手装備" }
+  ];
+
+  const countedMultiSlotKeys = new Set();
+
+  for (const entry of slotEntries) {
+    if (!entry.id) continue;
+    const part = byId[entry.id];
+    if (!part) {
+      violations.push(`不明なパーツID（${entry.label}: ${entry.id}）が含まれています。`);
+      continue;
+    }
+
+    const isMultiSlot =
+      isDualArmPart(part) || isDualLegPart(part) || isDualWeaponPart(part);
+
+    if (isMultiSlot) {
+      const dedupKey = `${entry.id}:${part.slot || part.cat || ""}`;
+      if (countedMultiSlotKeys.has(dedupKey)) {
+        continue;
+      }
+      countedMultiSlotKeys.add(dedupKey);
+    }
+
+    const rarity = String(part.rarity || "コモン").trim();
+    if (rarity === "レジェンド") {
+      legendCount += 1;
+    } else if (rarity === "レア") {
+      rareCount += 1;
+    }
+  }
+
+  if (legendCount > RARITY_LIMITS.legendMax) {
+    violations.push(
+      `レジェンドパーツは${RARITY_LIMITS.legendMax}個までです（現在: ${legendCount}個）。`
+    );
+  }
+  if (rareCount > RARITY_LIMITS.rareMax) {
+    violations.push(
+      `レアパーツは${RARITY_LIMITS.rareMax}個までです（現在: ${rareCount}個）。`
+    );
+  }
+
+  return {
+    ok: violations.length === 0,
+    legendCount,
+    rareCount,
+    violations
+  };
 }
 
 const state = {
@@ -125,11 +236,41 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
+function updateBattleButtonsState() {
+  if (!state.masterOk || !state.masterData) {
+    if (els.startBattleBtn) els.startBattleBtn.disabled = true;
+    if (els.randomBattleBtn) els.randomBattleBtn.disabled = true;
+    return;
+  }
+
+  const f1 = state.builds.find((b) => b.id === state.fighter1Id) || null;
+  const f2 = state.builds.find((b) => b.id === state.fighter2Id) || null;
+
+  const check1 = f1 ? validateBuildRarityLimits(f1, state.masterData) : { ok: false };
+  const check2 = f2 ? validateBuildRarityLimits(f2, state.masterData) : { ok: false };
+  const canStart = Boolean(f1 && f2 && check1.ok && check2.ok);
+
+  if (els.startBattleBtn) {
+    els.startBattleBtn.disabled = !canStart;
+  }
+
+  const legalCount = state.builds.filter(
+    (b) => validateBuildRarityLimits(b, state.masterData).ok
+  ).length;
+  if (els.randomBattleBtn) {
+    els.randomBattleBtn.disabled = legalCount < 2;
+  }
+}
+
 function setArenaControlsLocked(locked) {
   if (els.fighter1Select) els.fighter1Select.disabled = locked;
   if (els.fighter2Select) els.fighter2Select.disabled = locked;
-  if (els.startBattleBtn) els.startBattleBtn.disabled = locked;
-  if (els.randomBattleBtn) els.randomBattleBtn.disabled = locked;
+  if (locked) {
+    if (els.startBattleBtn) els.startBattleBtn.disabled = true;
+    if (els.randomBattleBtn) els.randomBattleBtn.disabled = true;
+  } else {
+    updateBattleButtonsState();
+  }
 }
 
 function applyFighterCardWinnerStyle(cardEl, isWinner) {
@@ -226,11 +367,23 @@ function renderFighterCard(targetEl, build, isWinner = false) {
     ? `<div style="margin-bottom:6px;"><span class="tag" style="background:#059669;color:#ffffff;border-color:#10b981;">勝利</span></div>`
     : "";
 
+  const limitCheck = validateBuildRarityLimits(normalizedBuild, state.masterData);
+  const violationHtml = limitCheck.ok
+    ? ""
+    : `<div class="rarity-alert" role="alert" style="margin-bottom:10px;padding:8px 10px;border-radius:6px;background:rgba(239,68,68,0.14);border:1px solid rgba(248,113,113,0.6);color:#fecaca;font-size:0.82rem;line-height:1.45;">
+        <strong>出撃不可（制限違反）</strong><br/>
+        ${escapeHtml(limitCheck.violations.join(" / "))}
+      </div>`;
+
   targetEl.innerHTML = `
     ${winnerRow}
+    ${violationHtml}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
       <h3 style="margin:0;font-size:1.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(st.name)}</h3>
       <span class="tag" style="white-space:nowrap;flex-shrink:0;">${escapeHtml(st.tactic)}</span>
+    </div>
+    <div class="muted" style="font-size:0.78rem;margin-bottom:8px;">
+      レジェンド ${limitCheck.legendCount}/${RARITY_LIMITS.legendMax} ・ レア ${limitCheck.rareCount}/${RARITY_LIMITS.rareMax}
     </div>
     <div class="equip-summary muted">
       <div class="equip-row"><strong>胴体:</strong> ${escapeHtml(eq.core)}</div>
@@ -330,7 +483,11 @@ function syncBuildSelectors() {
   }
 
   const optionsHtml = state.builds
-    .map((b) => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.name || "名称未設定ゴーレム")}</option>`)
+    .map((b) => {
+      const check = validateBuildRarityLimits(b, state.masterData);
+      const tag = check.ok ? "" : " [制限違反]";
+      return `<option value="${escapeHtml(b.id)}">${escapeHtml((b.name || "名称未設定ゴーレム") + tag)}</option>`;
+    })
     .join("");
 
   if (els.fighter1Select) {
@@ -346,6 +503,7 @@ function syncBuildSelectors() {
   const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
   renderFighterCard(els.fighter1Card, f1, state.lastWinnerSide === "fighter1");
   renderFighterCard(els.fighter2Card, f2, state.lastWinnerSide === "fighter2");
+  updateBattleButtonsState();
 }
 
 function handleStartBattle() {
@@ -353,19 +511,41 @@ function handleStartBattle() {
   const f1 = state.builds.find((b) => b.id === state.fighter1Id) || state.builds[0];
   const f2 = state.builds.find((b) => b.id === state.fighter2Id) || state.builds[1] || state.builds[0];
   if (!f1 || !f2) return;
+
+  const check1 = validateBuildRarityLimits(f1, state.masterData);
+  const check2 = validateBuildRarityLimits(f2, state.masterData);
+  if (!check1.ok || !check2.ok) {
+    const msgs = [
+      !check1.ok ? `機体1「${f1.name}」: ${check1.violations.join(" / ")}` : "",
+      !check2.ok ? `機体2「${f2.name}」: ${check2.violations.join(" / ")}` : ""
+    ].filter(Boolean);
+    showToast(msgs.join(" | ") || "レアリティ制限違反の機体は出撃できません。");
+    updateBattleButtonsState();
+    return;
+  }
+
   const result = runAutoBattle(f1, f2, state.masterData);
   renderBattleResult(result);
 }
 
 function handleRandomBattle() {
   if (!state.masterOk || !state.masterData || state.builds.length === 0) return;
-  const idx1 = Math.floor(Math.random() * state.builds.length);
-  let idx2 = Math.floor(Math.random() * state.builds.length);
-  if (state.builds.length > 1 && idx2 === idx1) {
-    idx2 = (idx1 + 1) % state.builds.length;
+  const legalBuilds = state.builds.filter(
+    (b) => validateBuildRarityLimits(b, state.masterData).ok
+  );
+  if (legalBuilds.length < 2) {
+    showToast("出撃可能な機体（レジェンド1/レア2以内）が2機以上必要です。");
+    updateBattleButtonsState();
+    return;
   }
-  state.fighter1Id = state.builds[idx1].id;
-  state.fighter2Id = state.builds[idx2].id;
+
+  const idx1 = Math.floor(Math.random() * legalBuilds.length);
+  let idx2 = Math.floor(Math.random() * legalBuilds.length);
+  if (legalBuilds.length > 1 && idx2 === idx1) {
+    idx2 = (idx1 + 1) % legalBuilds.length;
+  }
+  state.fighter1Id = legalBuilds[idx1].id;
+  state.fighter2Id = legalBuilds[idx2].id;
   state.lastWinnerSide = null;
   syncBuildSelectors();
   handleStartBattle();
@@ -387,6 +567,7 @@ function bindEvents() {
     const f2 = state.builds.find((b) => b.id === state.fighter2Id);
     renderFighterCard(els.fighter1Card, f1, false);
     renderFighterCard(els.fighter2Card, f2, false);
+    updateBattleButtonsState();
   });
 
   els.fighter2Select?.addEventListener("change", (e) => {
@@ -397,6 +578,7 @@ function bindEvents() {
     const f2 = state.builds.find((b) => b.id === state.fighter2Id);
     renderFighterCard(els.fighter1Card, f1, false);
     renderFighterCard(els.fighter2Card, f2, false);
+    updateBattleButtonsState();
   });
 
   els.startBattleBtn?.addEventListener("click", handleStartBattle);

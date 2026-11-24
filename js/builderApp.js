@@ -6,6 +6,11 @@ import {
 } from "./data/golemData.js";
 import { loadSavedBuilds, saveCustomBuild, deleteCustomBuild, showToast } from "./ui/storage.js";
 
+export const RARITY_LIMITS = {
+  legendMax: 1,
+  rareMax: 2
+};
+
 const TACTICS = Array.isArray(TACTIC_OPTIONS) && TACTIC_OPTIONS.length > 0
   ? TACTIC_OPTIONS
   : [
@@ -31,47 +36,75 @@ function normalizeTactic(tactic) {
   return DEFAULT_TACTIC && TACTICS.includes(DEFAULT_TACTIC) ? DEFAULT_TACTIC : TACTICS[0];
 }
 
-const FALLBACK_PRESETS = [
+const FALLBACK_BUILDS = [
   {
-    id: "knight",
-    name: "盾剣タンク（アイアンナイト）",
+    id: "preset_iron_knight",
+    name: "アイアンナイト",
     golemName: "アイアンナイト",
     core: "C02",
     head: "H01",
     rightArm: "A02",
     leftArm: "A01",
-    rightWeapon: "W01",
-    leftWeapon: "S02",
     rightLeg: "L01",
     leftLeg: "L01",
+    rightWeapon: "W01",
+    leftWeapon: "S02",
     tactic: "確実に当てて押し切れ"
   },
   {
-    id: "mage",
-    name: "魔導引き撃ち（アークメイジ）",
-    golemName: "アークメイジ",
+    id: "preset_bronze_hammer",
+    name: "ブロンズハンマー",
+    golemName: "ブロンズハンマー",
+    core: "C02",
+    head: "H02",
+    rightArm: "A02",
+    leftArm: "A02",
+    rightLeg: "L01",
+    leftLeg: "L01",
+    rightWeapon: "W03",
+    leftWeapon: "",
+    tactic: "確実に当てて押し切れ"
+  },
+  {
+    id: "preset_mana_spear",
+    name: "マナスピアシューター",
+    golemName: "マナスピアシューター",
     core: "C03",
     head: "H02",
     rightArm: "A01",
     leftArm: "A01",
-    rightWeapon: "W06",
-    leftWeapon: "W05",
     rightLeg: "L02",
     leftLeg: "L02",
+    rightWeapon: "W06",
+    leftWeapon: "W02",
     tactic: "間合いを制して翻弄せよ"
   },
   {
-    id: "twin",
-    name: "二刀流速攻（ツインファング）",
-    golemName: "ツインファング",
+    id: "preset_crystal_mage",
+    name: "クリスタルメイジ",
+    golemName: "クリスタルメイジ",
+    core: "C03",
+    head: "H01",
+    rightArm: "A01",
+    leftArm: "A02",
+    rightLeg: "L02",
+    leftLeg: "L01",
+    rightWeapon: "W05",
+    leftWeapon: "S01",
+    tactic: "間合いを制して翻弄せよ"
+  },
+  {
+    id: "preset_wind_duelist",
+    name: "ウィンドデュエリスト",
+    golemName: "ウィンドデュエリスト",
     core: "C01",
     head: "H02",
-    rightArm: "A02",
-    leftArm: "A02",
-    rightWeapon: "W01",
-    leftWeapon: "W01",
+    rightArm: "A01",
+    leftArm: "A01",
     rightLeg: "L02",
     leftLeg: "L02",
+    rightWeapon: "W01",
+    leftWeapon: "W06",
     tactic: "全力で薙ぎ払え"
   }
 ];
@@ -136,9 +169,13 @@ const els = {
   leftLegHint: document.getElementById("left-leg-hint"),
   leftLegList: document.getElementById("left-leg-list"),
   previewCard: document.getElementById("preview-card"),
+  rarityWarning: document.getElementById("rarity-warning"),
   saveBuildBtn: document.getElementById("save-build-btn"),
   saveAsNewBtn: document.getElementById("save-as-new-btn"),
   exportJsonBtn: document.getElementById("export-json-btn"),
+  importJsonBtn: document.getElementById("import-json-btn"),
+  importJsonTextarea: document.getElementById("import-json-textarea"),
+  importJsonInput: document.getElementById("import-json-input"),
   savedList: document.getElementById("saved-list")
 };
 
@@ -169,7 +206,8 @@ function isDualLegPart(part) {
     text.includes("両脚") ||
     text.includes("両脚占有") ||
     text.includes("ユニット") ||
-    text.includes("多脚")
+    text.includes("多脚") ||
+    text.includes("ホバー")
   );
 }
 
@@ -177,6 +215,113 @@ function isIntegratedWeaponPart(part) {
   if (!part) return false;
   const text = `${part.slot || ""} ${part.cat || ""} ${part.name || ""} ${part.note || ""}`;
   return text.includes("武器一体") || text.includes("一体型") || text.includes("武器内蔵");
+}
+
+/**
+ * ビルド内のレジェンド／レア個数を集計し、制限違反をチェックする
+ * 両腕・両脚・両手占有パーツはパーツ単位で1カウントとする
+ */
+export function validateBuildRarityLimits(build = {}, masterData = state.masterData) {
+  const byId = masterData?.byId || {};
+  const violations = [];
+  let legendCount = 0;
+  let rareCount = 0;
+
+  const slotEntries = [
+    { key: "core", id: build.core, label: "胴体" },
+    { key: "head", id: build.head, label: "頭部" },
+    { key: "rightArm", id: build.rightArm, label: "右腕" },
+    { key: "leftArm", id: build.leftArm, label: "左腕" },
+    { key: "rightLeg", id: build.rightLeg, label: "右脚" },
+    { key: "leftLeg", id: build.leftLeg, label: "左脚" },
+    { key: "rightWeapon", id: build.rightWeapon, label: "右手装備" },
+    { key: "leftWeapon", id: build.leftWeapon, label: "左手装備" }
+  ];
+
+  const countedMultiSlotKeys = new Set();
+
+  for (const entry of slotEntries) {
+    if (!entry.id) continue;
+    const part = byId[entry.id];
+    if (!part) {
+      violations.push(`不明なパーツID（${entry.label}: ${entry.id}）が含まれています。`);
+      continue;
+    }
+
+    const isMultiSlot =
+      isDualArmPart(part) || isDualLegPart(part) || isDualWeaponPart(part);
+
+    if (isMultiSlot) {
+      const dedupKey = `${entry.id}:${part.slot || part.cat || ""}`;
+      if (countedMultiSlotKeys.has(dedupKey)) {
+        continue;
+      }
+      countedMultiSlotKeys.add(dedupKey);
+    }
+
+    const rarity = String(part.rarity || "コモン").trim();
+    if (rarity === "レジェンド") {
+      legendCount += 1;
+    } else if (rarity === "レア") {
+      rareCount += 1;
+    }
+  }
+
+  if (legendCount > RARITY_LIMITS.legendMax) {
+    violations.push(
+      `レジェンドパーツは${RARITY_LIMITS.legendMax}個までです（現在: ${legendCount}個）。`
+    );
+  }
+  if (rareCount > RARITY_LIMITS.rareMax) {
+    violations.push(
+      `レアパーツは${RARITY_LIMITS.rareMax}個までです（現在: ${rareCount}個）。`
+    );
+  }
+
+  return {
+    ok: violations.length === 0,
+    legendCount,
+    rareCount,
+    violations
+  };
+}
+
+function showRarityViolationAlert(violations = []) {
+  const message = violations.join(" / ") || "レアリティ制限に違反しています。";
+  showToast(message);
+
+  let warnEl = els.rarityWarning;
+  if (!warnEl && els.previewCard) {
+    warnEl = document.getElementById("dynamic-rarity-warning");
+    if (!warnEl) {
+      warnEl = document.createElement("div");
+      warnEl.id = "dynamic-rarity-warning";
+      warnEl.className = "error-box";
+      els.previewCard.insertAdjacentElement("beforebegin", warnEl);
+    }
+  }
+  if (warnEl) {
+    warnEl.style.display = "block";
+    warnEl.style.borderColor = "#f87171";
+    warnEl.style.backgroundColor = "rgba(239, 68, 68, 0.12)";
+    warnEl.style.color = "#fecaca";
+    warnEl.style.padding = "10px 12px";
+    warnEl.style.borderRadius = "8px";
+    warnEl.style.marginBottom = "10px";
+    warnEl.textContent = `ビルド制限違反：${message}`;
+  }
+}
+
+function clearRarityViolationAlert() {
+  if (els.rarityWarning) {
+    els.rarityWarning.style.display = "none";
+    els.rarityWarning.textContent = "";
+  }
+  const dyn = document.getElementById("dynamic-rarity-warning");
+  if (dyn) {
+    dyn.style.display = "none";
+    dyn.textContent = "";
+  }
 }
 
 function normalizeDraftConstraints() {
@@ -231,6 +376,8 @@ function setControlsLocked(locked) {
   if (els.saveBuildBtn) els.saveBuildBtn.disabled = locked;
   if (els.saveAsNewBtn) els.saveAsNewBtn.disabled = locked;
   if (els.exportJsonBtn) els.exportJsonBtn.disabled = locked;
+  if (els.importJsonBtn) els.importJsonBtn.disabled = locked;
+  if (els.importJsonTextarea) els.importJsonTextarea.disabled = locked;
 }
 
 function renderStatus(statusInfo) {
@@ -265,6 +412,7 @@ function clearBlankBuilder() {
   if (els.presetSelect) els.presetSelect.innerHTML = "";
   if (els.previewCard) els.previewCard.innerHTML = "";
   if (els.savedList) els.savedList.innerHTML = "";
+  clearRarityViolationAlert();
   setControlsLocked(true);
 }
 
@@ -276,6 +424,7 @@ function formatPartSpec(p) {
   if (p.useCost > 0) bits.push(`消費${p.useCost}`);
   if (p.baseCost > 0) bits.push(`基礎消費-${p.baseCost}`);
   if (p.move > 0) bits.push(`移動${p.move}`);
+  if (p.evade > 0) bits.push(`回避+${p.evade}%`);
   if (p.acc !== 0) bits.push(`命中${p.acc > 0 ? "+" : ""}${p.acc}%`);
   return bits.join(" / ");
 }
@@ -355,12 +504,23 @@ function renderPreview() {
   const netMp = (core.mpRegen || 0) - baseCost;
   const move = isDualLeg ? (rLeg.move || 0) : (rLeg.move || 0) + (lLeg.move || 0);
   const tacticLabel = normalizeTactic(state.draft.tactic);
+  const limitCheck = validateBuildRarityLimits(state.draft, state.masterData);
+
+  if (!limitCheck.ok) {
+    showRarityViolationAlert(limitCheck.violations);
+  } else {
+    clearRarityViolationAlert();
+  }
 
   els.previewCard.innerHTML = `
     <div class="preview-header">
       <h3 class="preview-name">${escapeHtml(state.draft.name || "名称未設定ゴーレム")}</h3>
       <span class="tag">${escapeHtml(tacticLabel)}</span>
     </div>
+    <p class="muted" style="margin:0 0 6px;">
+      レアリティ制限：レジェンド ${limitCheck.legendCount}/${RARITY_LIMITS.legendMax} ・ レア ${limitCheck.rareCount}/${RARITY_LIMITS.rareMax}
+      ${limitCheck.ok ? "" : `<span style="color:#f87171;font-weight:700;">（制限超過：保存/出力不可）</span>`}
+    </p>
     <p class="muted" style="margin:0 0 6px;">胴体: ${escapeHtml(core.name)} / 頭部: ${escapeHtml(head.name)}</p>
     <p class="muted" style="margin:0 0 6px;">右腕: ${escapeHtml(rArm.name)} / 左腕: ${escapeHtml(lArm.name)}</p>
     <p class="muted" style="margin:0 0 6px;">脚部: ${escapeHtml(isDualLeg ? rLeg.name : `${rLeg.name} + ${lLeg.name}`)}</p>
@@ -372,10 +532,12 @@ function renderPreview() {
       <div class="stat-box"><div class="stat-label">移動力</div><div class="stat-value">${move}</div></div>
     </div>
   `;
+
   if (state.masterOk) {
-    els.saveBuildBtn.disabled = false;
-    els.saveAsNewBtn.disabled = false;
-    els.exportJsonBtn.disabled = false;
+    const canSaveOrExport = limitCheck.ok;
+    els.saveBuildBtn.disabled = !canSaveOrExport;
+    els.saveAsNewBtn.disabled = !canSaveOrExport;
+    els.exportJsonBtn.disabled = !canSaveOrExport;
   }
 }
 
@@ -388,10 +550,14 @@ function renderSavedBuilds() {
   els.savedList.innerHTML = saved
     .map((b) => {
       const tacticText = normalizeTactic(b.tactic);
+      const check = state.masterData ? validateBuildRarityLimits(b, state.masterData) : { ok: true };
+      const badgeHtml = check.ok
+        ? ""
+        : ` <span class="rarity-badge rarity-legend" style="margin-left:6px;">制限違反</span>`;
       return `
         <div class="saved-item">
           <div>
-            <div class="saved-item-title">${escapeHtml(b.name || "名称未設定ゴーレム")}</div>
+            <div class="saved-item-title">${escapeHtml(b.name || "名称未設定ゴーレム")}${badgeHtml}</div>
             <div class="muted">${escapeHtml(tacticText)}</div>
           </div>
           <div class="saved-item-actions">
@@ -462,6 +628,77 @@ function applyPresetById(presetId) {
   normalizeDraftConstraints();
   renderAll();
   showToast(`プリセット「${p.name}」を反映しました`);
+}
+
+function extractBuildFromImportedJson(rawObj) {
+  if (!rawObj || typeof rawObj !== "object") {
+    throw new Error("JSONの形式が不正です。");
+  }
+  const srcParts = rawObj.parts && typeof rawObj.parts === "object" ? rawObj.parts : rawObj;
+
+  return {
+    id: null,
+    name: String(rawObj.name || rawObj.golemName || "取込ゴーレム").trim() || "取込ゴーレム",
+    core: srcParts.core ? String(srcParts.core).trim() : "",
+    head: srcParts.head ? String(srcParts.head).trim() : "",
+    rightArm: srcParts.rightArm ? String(srcParts.rightArm).trim() : "",
+    leftArm: srcParts.leftArm ? String(srcParts.leftArm).trim() : "",
+    rightWeapon: srcParts.rightWeapon ? String(srcParts.rightWeapon).trim() : "",
+    leftWeapon: srcParts.leftWeapon ? String(srcParts.leftWeapon).trim() : "",
+    rightLeg: srcParts.rightLeg ? String(srcParts.rightLeg).trim() : "",
+    leftLeg: srcParts.leftLeg ? String(srcParts.leftLeg).trim() : "",
+    tactic: normalizeTactic(rawObj.tactic)
+  };
+}
+
+export function importBuildFromJsonText(jsonText) {
+  if (!state.masterOk || !state.masterData) {
+    showToast("パーツマスター読込後にJSONを取り込んでください。");
+    return false;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(String(jsonText || ""));
+  } catch {
+    showRarityViolationAlert(["JSONの構文が正しくありません。"]);
+    return false;
+  }
+
+  let candidate;
+  try {
+    candidate = extractBuildFromImportedJson(parsed);
+  } catch (err) {
+    showRarityViolationAlert([err.message]);
+    return false;
+  }
+
+  const requiredSlots = [
+    { key: "core", label: "胴体" },
+    { key: "head", label: "頭部" },
+    { key: "rightArm", label: "右腕" },
+    { key: "rightLeg", label: "右脚" }
+  ];
+  for (const req of requiredSlots) {
+    if (!candidate[req.key]) {
+      showRarityViolationAlert([`必須スロット（${req.label}）が指定されていません。`]);
+      return false;
+    }
+  }
+
+  const limitCheck = validateBuildRarityLimits(candidate, state.masterData);
+  if (!limitCheck.ok) {
+    showRarityViolationAlert(limitCheck.violations);
+    return false;
+  }
+
+  state.draft = candidate;
+  if (els.golemName) els.golemName.value = state.draft.name;
+  normalizeDraftConstraints();
+  clearRarityViolationAlert();
+  renderAll();
+  showToast(`JSON「${state.draft.name}」を取り込みました`);
+  return true;
 }
 
 function renderAll() {
@@ -685,9 +922,15 @@ function bindEvents() {
       name: (state.draft.name || "").trim() || "名称未設定ゴーレム",
       tactic: normalizeTactic(state.draft.tactic)
     };
+    const check = validateBuildRarityLimits(normalizedDraft, state.masterData);
+    if (!check.ok) {
+      showRarityViolationAlert(check.violations);
+      return;
+    }
     const saved = saveCustomBuild(normalizedDraft);
     state.draft.id = saved.id;
     state.draft.tactic = normalizeTactic(saved.tactic);
+    clearRarityViolationAlert();
     renderSavedBuilds();
     showToast(`「${saved.name}」を保存しました`);
   });
@@ -695,16 +938,23 @@ function bindEvents() {
   els.saveAsNewBtn?.addEventListener("click", () => {
     if (!state.masterOk) return;
     const baseName = (state.draft.name || "").trim() || "名称未設定ゴーレム";
-    const saved = saveCustomBuild({
+    const candidate = {
       ...state.draft,
       id: `custom_${Date.now()}`,
       name: `${baseName} コピー`,
       tactic: normalizeTactic(state.draft.tactic)
-    });
+    };
+    const check = validateBuildRarityLimits(candidate, state.masterData);
+    if (!check.ok) {
+      showRarityViolationAlert(check.violations);
+      return;
+    }
+    const saved = saveCustomBuild(candidate);
     state.draft.id = saved.id;
     state.draft.name = saved.name;
     state.draft.tactic = normalizeTactic(saved.tactic);
     if (els.golemName) els.golemName.value = saved.name;
+    clearRarityViolationAlert();
     renderSavedBuilds();
     showToast(`「${saved.name}」として保存しました`);
   });
@@ -727,10 +977,47 @@ function bindEvents() {
       },
       tactic: tacticValue
     };
+    const check = validateBuildRarityLimits(payload.parts, state.masterData);
+    if (!check.ok) {
+      showRarityViolationAlert(check.violations);
+      return;
+    }
     navigator.clipboard?.writeText(JSON.stringify(payload, null, 2)).then(
       () => showToast("ビルドJSONをコピーしました"),
       () => showToast("JSONを生成しました")
     );
+  });
+
+  els.importJsonBtn?.addEventListener("click", async () => {
+    if (!state.masterOk) return;
+    const textareaValue = els.importJsonTextarea?.value?.trim();
+    if (textareaValue) {
+      importBuildFromJsonText(textareaValue);
+      return;
+    }
+    if (els.importJsonInput) {
+      els.importJsonInput.click();
+      return;
+    }
+    if (navigator.clipboard?.readText) {
+      try {
+        const text = await navigator.clipboard.readText();
+        importBuildFromJsonText(text);
+      } catch {
+        showToast("クリップボードからJSONを読み取れませんでした。");
+      }
+    }
+  });
+
+  els.importJsonInput?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      importBuildFromJsonText(String(reader.result || ""));
+      e.target.value = "";
+    };
+    reader.readAsText(file);
   });
 
   els.reloadDataBtn?.addEventListener("click", async () => {
