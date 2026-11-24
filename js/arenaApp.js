@@ -125,6 +125,28 @@ function renderFighterCard(targetEl, build) {
   `;
 }
 
+function formatLogLineHtml(line) {
+  const text = String(line);
+  if (text.startsWith("[T1]")) {
+    return `<div class="log-line is-header">${escapeHtml(text)}</div>`;
+  }
+  if (text.startsWith("--- ターン")) {
+    return `<div class="log-line is-turn-divider">${escapeHtml(text)}</div>`;
+  }
+  if (text.startsWith("決着：")) {
+    return `<div class="log-line is-result">${escapeHtml(text)}</div>`;
+  }
+
+  const parenIdx = text.indexOf("（");
+  if (parenIdx > 0 && text.endsWith("）")) {
+    const mainPart = text.slice(0, parenIdx).trim();
+    const metaPart = text.slice(parenIdx);
+    return `<div class="log-line">${escapeHtml(mainPart)}<span class="log-sub">${escapeHtml(metaPart)}</span></div>`;
+  }
+
+  return `<div class="log-line">${escapeHtml(text)}</div>`;
+}
+
 function renderBattleResult(result) {
   if (!result) return;
 
@@ -138,13 +160,7 @@ function renderBattleResult(result) {
   if (els.battleLog) {
     els.battleLog.style.display = "block";
     const lines = Array.isArray(result.logs) ? result.logs : [];
-    els.battleLog.innerHTML = lines
-      .map((line) => {
-        const isTurn = String(line).startsWith("--- ターン");
-        const cls = isTurn ? "log-line is-turn-divider" : "log-line";
-        return `<div class="${cls}">${escapeHtml(line)}</div>`;
-      })
-      .join("");
+    els.battleLog.innerHTML = lines.map(formatLogLineHtml).join("");
   }
 }
 
