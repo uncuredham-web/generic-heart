@@ -222,17 +222,15 @@ function renderFighterCard(targetEl, build, isWinner = false) {
   const st = calcFighterStats(normalizedBuild, state.masterData);
   const eq = st.equipmentSummary;
   const mpRegenLabel = st.mpRegen >= 0 ? `+${st.mpRegen}` : `${st.mpRegen}`;
-  const winnerBadge = isWinner
-    ? `<span class="tag" style="background:#059669;color:#ffffff;border-color:#10b981;">勝利</span>`
+  const winnerRow = isWinner
+    ? `<div style="margin-bottom:6px;"><span class="tag" style="background:#059669;color:#ffffff;border-color:#10b981;">勝利</span></div>`
     : "";
 
   targetEl.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <h3 style="margin:0;font-size:1.1rem;">${escapeHtml(st.name)}</h3>
-        ${winnerBadge}
-      </div>
-      <span class="tag">${escapeHtml(st.tactic)}</span>
+    ${winnerRow}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+      <h3 style="margin:0;font-size:1.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(st.name)}</h3>
+      <span class="tag" style="white-space:nowrap;flex-shrink:0;">${escapeHtml(st.tactic)}</span>
     </div>
     <div class="equip-summary muted">
       <div class="equip-row"><strong>胴体:</strong> ${escapeHtml(eq.core)}</div>
@@ -245,8 +243,12 @@ function renderFighterCard(targetEl, build, isWinner = false) {
     </div>
     <div class="stats-grid" style="grid-template-columns:repeat(3, minmax(0, 1fr));">
       <div class="stat-box"><div class="stat-label">胴体耐久</div><div class="stat-value">${st.hp}</div></div>
-      <div class="stat-box"><div class="stat-label">最大魔力</div><div class="stat-value">${st.maxMp}</div></div>
-      <div class="stat-box"><div class="stat-label">移動力（回復${mpRegenLabel}）</div><div class="stat-value">${st.move}</div></div>
+      <div class="stat-box">
+        <div class="stat-label">最大魔力</div>
+        <div class="stat-value">${st.maxMp}</div>
+        <div class="stat-sub muted" style="font-size:0.75rem;margin-top:2px;">毎ターン ${escapeHtml(mpRegenLabel)}</div>
+      </div>
+      <div class="stat-box"><div class="stat-label">移動力</div><div class="stat-value">${st.move}</div></div>
     </div>
   `;
 
