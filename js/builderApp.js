@@ -462,11 +462,19 @@ function renderAll() {
     equips,
     state.draft.rightWeapon,
     (id) => {
-      const next = state.draft.rightWeapon === id ? "" : id;
-      state.draft.rightWeapon = next;
-      if (next && isDualWeaponPart(byId[next])) {
-        state.draft.leftWeapon = next;
-      } else if (!next && isDualWeaponPart(rWeapObj)) {
+      const picked = byId[id];
+      const current = byId[state.draft.rightWeapon];
+      if (state.draft.rightWeapon === id) {
+        state.draft.rightWeapon = "";
+        if (isDualWeaponPart(current)) {
+          state.draft.leftWeapon = "";
+        }
+        return;
+      }
+      state.draft.rightWeapon = id;
+      if (isDualWeaponPart(picked)) {
+        state.draft.leftWeapon = id;
+      } else if (isDualWeaponPart(current)) {
         state.draft.leftWeapon = "";
       }
     },
@@ -516,8 +524,7 @@ function renderAll() {
     leftEquips,
     state.draft.leftWeapon,
     (id) => {
-      const next = state.draft.leftWeapon === id ? "" : id;
-      state.draft.leftWeapon = next;
+      state.draft.leftWeapon = state.draft.leftWeapon === id ? "" : id;
     },
     leftWeaponDisabled
   );
