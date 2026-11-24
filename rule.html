@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ルールガイド | GENERIC HEART</title>
+  <link rel="stylesheet" href="./css/common.css" />
+  <link rel="stylesheet" href="./css/index.css" />
+  <style>
+    .rule-section {
+      margin-bottom: 20px;
+    }
+    .rule-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 820px) {
+      .rule-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .rule-list {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      color: #cbd5e1;
+      font-size: 0.9rem;
+    }
+    .rule-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .rule-pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.14);
+      color: var(--accent-primary);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+    .rule-pill.is-purple {
+      background: rgba(168, 85, 247, 0.16);
+      color: #e9d5ff;
+      border-color: rgba(168, 85, 247, 0.35);
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-area">
+        <div>
+          <h1 class="brand-title">GENERIC HEART</h1>
+          <p class="brand-subtitle">パーツ選び＆バトルルールガイド</p>
+        </div>
+      </div>
+        <nav class="nav-links" aria-label="画面切り替え">
+        <a class="nav-link" href="./index.html">ポータル</a>
+        <a class="nav-link" href="./builder.html">ゴーレムビルダー</a>
+        <a class="nav-link" href="./arena.html">ゴーレムアリーナ</a>
+        <a class="nav-link" href="./rule.html">ルールガイド</a>
+        <a class="nav-link" href="./parts.html">パーツ一覧</a>
+        </nav>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <section class="hero-panel rule-section">
+      <div class="hero-eyebrow">PART SELECTION &amp; BATTLE GUIDE</div>
+      <h2 class="hero-title">パーツ選びの指標と基本ルール</h2>
+      <p class="hero-desc">
+        「ジェネリックハート_パーツマスター_Ver1.1」で機体を組むときに押さえておきたい制限・魔力収支・部位占有・戦術の考え方をまとめています。
+      </p>
+    </section>
+
+    <section class="rule-grid" aria-label="基本ルール">
+      <article class="panel">
+        <h3 class="panel-title">
+          <span>1. レアリティ制限</span>
+          <span class="tag">出撃条件</span>
+        </h3>
+        <p class="muted" style="margin:0;">
+          機体全体で搭載できる高レアリティパーツには上限があります。制限を超えるとアリーナに出撃できません。
+        </p>
+        <div class="rule-pill-row">
+          <span class="rule-pill">レジェンド：1個まで</span>
+          <span class="rule-pill is-purple">レア：2個まで</span>
+        </div>
+        <ul class="rule-list">
+          <li><strong>占有パーツのカウント</strong>：両腕・両脚・両手占有パーツは、複数スロットを塞いでも<strong>パーツ単位で1個</strong>として数えます。</li>
+          <li><strong>選び方の指標</strong>：レジェンド枠は「決戦火力」「超機動・回避」「命中・指示強化」「魔力基盤」など、戦術の軸になる1点に絞ると組みやすくなります。</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h3 class="panel-title">
+          <span>2. 胴体耐久と魔力収支</span>
+          <span class="tag">継戦力</span>
+        </h3>
+        <p class="muted" style="margin:0;">
+          機体の耐久力と、武器・スキルを継続して使えるかどうかの指標です。
+        </p>
+        <ul class="rule-list">
+          <li><strong>胴体耐久</strong>：機体のHPです。落ちると敗北になるため、前衛・重装型は高耐久コアが軸になります。</li>
+          <li><strong>最大魔力＆毎ターン魔力収支</strong>：魔力武器や内蔵ブレス・スキルは魔力を消費します。毎ターンの収支がプラスだと高コスト武装を回しやすくなり、マイナスが大きい構成は息切れしやすくなります。</li>
+          <li><strong>選び方の指標</strong>：物理武器中心なら魔力消費を抑え、魔力武器や高燃費パーツを使うなら最大魔力・毎ターン回復量が高いコアと組み合わせます。</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h3 class="panel-title">
+          <span>3. 部位構成と占有パーツ</span>
+          <span class="tag">スロット相性</span>
+        </h3>
+        <p class="muted" style="margin:0;">
+          両腕・両脚・両手占有パーツと、個別部位・シールドの使い分けです。
+        </p>
+        <ul class="rule-list">
+          <li><strong>両腕占有／両脚占有</strong>：複数枠を塞ぐ代わりに、高火力・長射程・高機動などの強い性能を得られます。左右を分けて組む柔軟性とのトレードオフになります。</li>
+          <li><strong>腕パーツ＆シールド</strong>：腕パーツは耐久だけでなく命中補正や武器威力強化を持つものがあり、盾は被ダメージ肩代わり・魔力ダメージ半減・回避補正などで機体を守れます。</li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <h3 class="panel-title">
+          <span>4. 「さくせん」・射程・10連戦検証</span>
+          <span class="tag">立ち回り＆比較</span>
+        </h3>
+        <p class="muted" style="margin:0;">
+          パーツの性能と「さくせん」を噛み合わせ、10連戦で安定感を確かめるのがおすすめです。
+        </p>
+        <ul class="rule-list">
+          <li><strong>射程・移動力・命中／回避</strong>：近距離武器なら移動力や接近手段、遠距離武器なら間合い維持や命中率（acc）を重視すると噛み合いやすくなります。高火力だが命中が低い武器は命中補正との組み合わせが鍵です。</li>
+          <li><strong>10連戦で比較</strong>：1戦ごとの乱数ブレを避けるため、アリーナの<strong>「バトル開始×10」</strong>や<strong>「ランダム対戦×10」</strong>で勝数を比べるとパーツ変更の効果を判断しやすくなります。</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="quick-footer" style="margin-top:0;padding-top:0;border-top:none;">
+        <span class="muted">※ ルールやパーツ数値はマスターデータ（Ver1.1）に合わせて調整できます。</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="./builder.html" class="btn btn-primary btn-sm">ゴーレムビルダーへ →</a>
+          <a href="./arena.html" class="btn btn-secondary btn-sm">ゴーレムアリーナへ →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
