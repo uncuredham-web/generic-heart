@@ -180,7 +180,8 @@ function enrichPart(row) {
       text.includes("両脚") ||
       text.includes("両脚占有") ||
       text.includes("ユニット") ||
-      text.includes("多脚"),
+      text.includes("多脚") ||
+      text.includes("ホバー"),
     isIntegratedWeapon:
       text.includes("武器一体") || text.includes("一体型") || text.includes("武器内蔵"),
     isShield: String(row.cat || "").includes("盾") || text.includes("シールド")

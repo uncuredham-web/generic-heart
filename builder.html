@@ -6,58 +6,6 @@
   <title>ゴーレムビルダー | ジェネリックハート</title>
   <link rel="stylesheet" href="./css/common.css" />
   <link rel="stylesheet" href="./css/builder.css" />
-  <style>
-    .builder-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
-      gap: 20px;
-      align-items: start;
-    }
-    .sticky-aside {
-      position: sticky;
-      top: 20px;
-    }
-    .sub-block-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      margin: 12px 0 8px;
-      color: var(--text-muted, #cbd5e1);
-    }
-    .is-disabled-block {
-      opacity: 0.42;
-      pointer-events: none;
-      filter: grayscale(0.45);
-      user-select: none;
-    }
-    .disabled-hint {
-      font-size: 0.82rem;
-      color: var(--text-muted, #94a3b8);
-      margin: 4px 0 8px;
-    }
-    .json-import-box {
-      margin-top: 14px;
-      padding-top: 14px;
-      border-top: 1px solid var(--border, rgba(148, 163, 184, 0.2));
-    }
-    .json-import-textarea {
-      width: 100%;
-      min-height: 76px;
-      font-family: monospace;
-      font-size: 0.82rem;
-      padding: 8px;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      box-sizing: border-box;
-    }
-    @media (max-width: 960px) {
-      .builder-layout {
-        grid-template-columns: 1fr;
-      }
-      .sticky-aside {
-        position: static;
-      }
-    }
-  </style>
 </head>
 <body>
   <header class="site-header">
@@ -76,7 +24,7 @@
     </div>
   </header>
 
-  <main class="page-container">
+  <main class="builder-container">
     <div class="status-bar">
       <div>
         <span id="data-status" class="status-badge is-fallback">「ジェネリックハート_パーツマスター_Ver1.1」読込待機中...</span>
@@ -88,8 +36,28 @@
 
     <div id="master-error" class="panel" style="display:none; border-color:var(--danger); color:#fca5a5; margin-bottom:20px;" role="alert"></div>
 
-    <div class="builder-layout">
-      <section class="panel">
+    <div class="builder-3col">
+      <!-- 左カラム：ビルドJSON取込・保存済み機体 -->
+      <aside class="panel builder-left-col">
+        <div class="json-import-box">
+          <h2 class="panel-title">ビルドJSON取込</h2>
+          <label for="import-json-textarea" class="muted" style="display:block;margin-bottom:6px;">
+            JSONを貼り付けて取り込み
+          </label>
+          <textarea
+            id="import-json-textarea"
+            class="json-import-textarea"
+            placeholder='{"name":"機体名","parts":{"core":"C01",...},"tactic":"確実に当てて押し切れ"}'
+          ></textarea>
+          <button id="import-json-btn" type="button" class="btn btn-secondary btn-sm">JSONを取込</button>
+        </div>
+
+        <h2 class="panel-title" style="margin-top:18px;">保存済み機体</h2>
+        <div id="saved-list" class="saved-list"></div>
+      </aside>
+
+      <!-- 中央カラム：ビルドのメインブロック -->
+      <section class="panel builder-main-col">
         <h2 class="panel-title">1. 基本設定・プリセット</h2>
 
         <div class="form-row">
@@ -152,7 +120,8 @@
         </div>
       </section>
 
-      <aside class="panel sticky-aside">
+      <!-- 右カラム：ビルドプレビュー・出力（スクロール追従） -->
+      <aside class="panel builder-right-sticky">
         <h2 class="panel-title">ビルドプレビュー・出力</h2>
 
         <div id="rarity-warning" style="display:none;" role="alert"></div>
@@ -164,25 +133,10 @@
           <button id="export-json-btn" type="button" class="btn btn-secondary">JSONコピー</button>
           <a href="./arena.html" class="btn btn-secondary">アリーナへ移動 →</a>
         </div>
-
-        <div class="json-import-box">
-          <label for="import-json-textarea" style="display:block;margin-bottom:6px;font-size:0.9rem;font-weight:700;">
-            ビルドJSON取込
-          </label>
-          <textarea
-            id="import-json-textarea"
-            class="json-import-textarea"
-            placeholder='{"name":"機体名","parts":{"core":"C01",...},"tactic":"確実に当てて押し切れ"}'
-          ></textarea>
-          <button id="import-json-btn" type="button" class="btn btn-secondary btn-sm">JSONを取込</button>
-        </div>
-
-        <h3 class="panel-title" style="margin-top:24px;">保存済み機体</h3>
-        <div id="saved-list" class="saved-list"></div>
       </aside>
     </div>
   </main>
 
-  <script type="module" src="./js/builderApp.js?v=11"></script>
+  <script type="module" src="./js/builderApp.js?v=12"></script>
 </body>
 </html>

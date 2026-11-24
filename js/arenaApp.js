@@ -426,7 +426,7 @@ function formatLogLineHtml(line) {
     ? `<span class="log-sub" style="display:block;margin-top:2px;white-space:pre-line;">${escapeHtml(subText)}</span>`
     : "";
 
-  return `<div class="log-line${extraClass}" style="white:normal;line-height:1.55;">${escapeHtml(mainText)}${subHtml}</div>`;
+  return `<div class="log-line${extraClass}" style="white-space:normal;line-height:1.55;">${escapeHtml(mainText)}${subHtml}</div>`;
 }
 
 function renderBattleResult(result) {

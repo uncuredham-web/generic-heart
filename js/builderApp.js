@@ -115,7 +115,7 @@ function getAvailablePresets() {
     : [];
   const basePresets = Array.isArray(PRESET_BUILDS) && PRESET_BUILDS.length > 0
     ? PRESET_BUILDS
-    : FALLBACK_PRESETS;
+    : FALLBACK_BUILDS;
 
   const source = sheetPresets.length > 0 ? sheetPresets : basePresets;
   return source.map((p) => ({
