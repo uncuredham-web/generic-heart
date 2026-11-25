@@ -2,7 +2,9 @@ import {
   loadGolemMasterData,
   TACTIC_OPTIONS,
   DEFAULT_TACTIC,
-  PRESET_BUILDS
+  PRESET_BUILDS,
+  BUDGET_LIMIT_GOLD,
+  toFiniteNumber
 } from "./data/golemData.js";
 import { loadSavedBuilds, saveCustomBuild, deleteCustomBuild, showToast } from "./ui/storage.js";
 
@@ -10,6 +12,8 @@ export const RARITY_LIMITS = {
   legendMax: 1,
   rareMax: 2
 };
+
+export const BUDGET_LIMIT = BUDGET_LIMIT_GOLD || 1000;
 
 const TACTICS = Array.isArray(TACTIC_OPTIONS) && TACTIC_OPTIONS.length > 0
   ? TACTIC_OPTIONS
@@ -188,6 +192,11 @@ function escapeHtml(str) {
     .replaceAll("'", "&#39;");
 }
 
+function formatGold(amount) {
+  const n = Math.max(0, Math.round(toFiniteNumber(amount, 0)));
+  return `${n.toLocaleString()}G`;
+}
+
 function getRarityClass(rarity) {
   const r = String(rarity || "").trim();
   if (r === "アンコモン") return "rarity-uncommon";
@@ -226,15 +235,12 @@ function isIntegratedWeaponPart(part) {
   return text.includes("武器一体") || text.includes("一体型") || text.includes("武器内蔵");
 }
 
-/**
- * ビルド内のレジェンド／レア個数を集計し、制限違反をチェックする
- * 両腕・両脚・両手占有パーツはパーツ単位で1カウントとする
- */
-export function validateBuildRarityLimits(build = {}, masterData = state.masterData) {
+export function validateBuildConstraints(build = {}, masterData = state.masterData) {
   const byId = masterData?.byId || {};
   const violations = [];
   let legendCount = 0;
   let rareCount = 0;
+  let totalPrice = 0;
 
   const slotEntries = [
     { key: "core", id: build.core, label: "胴体" },
@@ -267,6 +273,8 @@ export function validateBuildRarityLimits(build = {}, masterData = state.masterD
       countedMultiSlotIds.add(entry.id);
     }
 
+    totalPrice += Math.max(0, toFiniteNumber(part.price, 0));
+
     const rarity = String(part.rarity || "コモン").trim();
     if (rarity === "レジェンド") {
       legendCount += 1;
@@ -285,17 +293,26 @@ export function validateBuildRarityLimits(build = {}, masterData = state.masterD
       `レアパーツは${RARITY_LIMITS.rareMax}個までです（現在: ${rareCount}個）。`
     );
   }
+  if (totalPrice > BUDGET_LIMIT) {
+    violations.push(
+      `所持金上限（${formatGold(BUDGET_LIMIT)}）を超過しています（合計: ${formatGold(totalPrice)}）。`
+    );
+  }
 
   return {
     ok: violations.length === 0,
     legendCount,
     rareCount,
+    totalPrice,
+    budgetLimit: BUDGET_LIMIT,
     violations
   };
 }
 
-function showRarityViolationAlert(violations = []) {
-  const message = violations.join(" / ") || "レアリティ制限に違反しています。";
+export const validateBuildRarityLimits = validateBuildConstraints;
+
+function showViolationAlert(violations = []) {
+  const message = violations.join(" / ") || "ビルド制限に違反しています。";
   showToast(message);
 
   let warnEl = els.rarityWarning;
@@ -321,7 +338,7 @@ function showRarityViolationAlert(violations = []) {
   }
 }
 
-function clearRarityViolationAlert() {
+function clearViolationAlert() {
   if (els.rarityWarning) {
     els.rarityWarning.hidden = true;
     els.rarityWarning.style.display = "none";
@@ -431,12 +448,12 @@ function clearBlankBuilder() {
   if (els.presetSelect) els.presetSelect.innerHTML = "";
   if (els.previewCard) els.previewCard.innerHTML = "";
   if (els.savedList) els.savedList.innerHTML = "";
-  clearRarityViolationAlert();
+  clearViolationAlert();
   setControlsLocked(true);
 }
 
 function formatPartSpec(p) {
-  const bits = [];
+  const bits = [`価格${formatGold(p.price)}`];
   if (p.hp > 0) bits.push(`耐久${p.hp}`);
   if (p.maxMp > 0) bits.push(`最大魔力${p.maxMp}/回復+${p.mpRegen}`);
   if (p.power > 0) bits.push(`威力${p.power}/射程${p.range}`);
@@ -462,12 +479,14 @@ function renderList(container, items, selectedId, onPick, disabled = false) {
           tabindex="${disabled ? "-1" : "0"}"
           data-part-id="${escapeHtml(p.id)}"
           data-rarity="${escapeHtml(rarityLabel)}"
+          data-price="${escapeHtml(p.price ?? 0)}"
           aria-pressed="${p.id === selectedId ? "true" : "false"}"
           aria-disabled="${disabled ? "true" : "false"}"
         >
           <div class="part-card-header">
             <span>${escapeHtml(p.name)}</span>
             <div class="part-badges">
+              <span class="part-price">${escapeHtml(formatGold(p.price))}</span>
               <span class="rarity-badge ${rarityClass}">${escapeHtml(rarityLabel)}</span>
               <span class="part-cost">${escapeHtml(p.cat)}</span>
             </div>
@@ -537,44 +556,49 @@ function renderPreview() {
     active.push(lWeap);
   }
 
-  const baseCost = active.reduce((s, p) => s + (p.baseCost || 0), 0);
-  const netMp = (core.mpRegen || 0) - baseCost;
-  const move = isDualLeg ? (rLeg.move || 0) : (rLeg.move || 0) + (lLeg.move || 0);
+  const baseCost = active.reduce((s, p) => s + toFiniteNumber(p.baseCost, 0), 0);
+  const netMp = toFiniteNumber(core.mpRegen, 0) - baseCost;
+  const move = isDualLeg ? toFiniteNumber(rLeg.move, 0) : toFiniteNumber(rLeg.move, 0) + toFiniteNumber(lLeg.move, 0);
   const tacticLabel = normalizeTactic(state.draft.tactic);
-  const limitCheck = validateBuildRarityLimits(state.draft, state.masterData);
+  const check = validateBuildConstraints(state.draft, state.masterData);
+  const overBudget = check.totalPrice > BUDGET_LIMIT;
 
-  if (!limitCheck.ok) {
-    showRarityViolationAlert(limitCheck.violations);
+  if (!check.ok) {
+    showViolationAlert(check.violations);
   } else {
-    clearRarityViolationAlert();
+    clearViolationAlert();
   }
 
   const armSummaryHtml = isDualArm
-    ? `<p class="muted" style="margin:0 0 4px;"><strong>腕部:</strong> ${escapeHtml(rArm.name)}（両腕占有）</p>`
-    : `<p class="muted" style="margin:0 0 4px;"><strong>右腕:</strong> ${escapeHtml(rArm.name)}</p>
-       <p class="muted" style="margin:0 0 4px;"><strong>左腕:</strong> ${escapeHtml(lArm.name)}</p>`;
+    ? `<p class="muted" style="margin:0 0 4px;"><strong>腕部:</strong> ${escapeHtml(rArm.name)}（${escapeHtml(formatGold(rArm.price))} / 両腕占有）</p>`
+    : `<p class="muted" style="margin:0 0 4px;"><strong>右腕:</strong> ${escapeHtml(rArm.name)}（${escapeHtml(formatGold(rArm.price))}）</p>
+       <p class="muted" style="margin:0 0 4px;"><strong>左腕:</strong> ${escapeHtml(lArm.name)}（${escapeHtml(formatGold(lArm.price))}）</p>`;
 
   const legSummaryHtml = isDualLeg
-    ? `<p class="muted" style="margin:0 0 4px;"><strong>脚部:</strong> ${escapeHtml(rLeg.name)}（両脚占有）</p>`
-    : `<p class="muted" style="margin:0 0 4px;"><strong>右脚:</strong> ${escapeHtml(rLeg.name)}</p>
-       <p class="muted" style="margin:0 0 4px;"><strong>左脚:</strong> ${escapeHtml(lLeg.name)}</p>`;
+    ? `<p class="muted" style="margin:0 0 4px;"><strong>脚部:</strong> ${escapeHtml(rLeg.name)}（${escapeHtml(formatGold(rLeg.price))} / 両脚占有）</p>`
+    : `<p class="muted" style="margin:0 0 4px;"><strong>右脚:</strong> ${escapeHtml(rLeg.name)}（${escapeHtml(formatGold(rLeg.price))}）</p>
+       <p class="muted" style="margin:0 0 4px;"><strong>左脚:</strong> ${escapeHtml(lLeg.name)}（${escapeHtml(formatGold(lLeg.price))}）</p>`;
 
   els.previewCard.innerHTML = `
     <div class="preview-header">
       <h3 class="preview-name">${escapeHtml(state.draft.name || "名称未設定ゴーレム")}</h3>
       <span class="tag">${escapeHtml(tacticLabel)}</span>
     </div>
+    <p class="muted" style="margin:0 0 6px;">
+      所持金合計：<strong style="color:${overBudget ? "#f87171" : "#86efac"};">${escapeHtml(formatGold(check.totalPrice))}</strong> / ${escapeHtml(formatGold(BUDGET_LIMIT))}
+      ${overBudget ? `<br><span style="color:#f87171;font-weight:700;">（予算超過：保存/出力/出撃不可）</span>` : ""}
+    </p>
     <p class="muted" style="margin:0 0 8px;">
-      レアリティ制限：レジェンド ${limitCheck.legendCount}/${RARITY_LIMITS.legendMax} ・ レア ${limitCheck.rareCount}/${RARITY_LIMITS.rareMax}
-      ${limitCheck.ok ? "" : `<br><span style="color:#f87171;font-weight:700;">（制限超過：保存/出力不可）</span>`}
+      レアリティ制限：レジェンド ${check.legendCount}/${RARITY_LIMITS.legendMax} ・ レア ${check.rareCount}/${RARITY_LIMITS.rareMax}
+      ${check.ok ? "" : `<br><span style="color:#f87171;font-weight:700;">（制限超過：保存/出力不可）</span>`}
     </p>
     <div class="preview-equip-list" style="margin-bottom:10px; line-height:1.5;">
-      <p class="muted" style="margin:0 0 4px;"><strong>胴体:</strong> ${escapeHtml(core.name)}</p>
-      <p class="muted" style="margin:0 0 4px;"><strong>頭部:</strong> ${escapeHtml(head.name)}</p>
+      <p class="muted" style="margin:0 0 4px;"><strong>胴体:</strong> ${escapeHtml(core.name)}（${escapeHtml(formatGold(core.price))}）</p>
+      <p class="muted" style="margin:0 0 4px;"><strong>頭部:</strong> ${escapeHtml(head.name)}（${escapeHtml(formatGold(head.price))}）</p>
       ${armSummaryHtml}
       ${legSummaryHtml}
-      <p class="muted" style="margin:0 0 4px;"><strong>右手:</strong> ${escapeHtml(rWeap ? rWeap.name : "なし")}</p>
-      <p class="muted" style="margin:0;"><strong>左手:</strong> ${escapeHtml(lWeap ? lWeap.name : "なし")}</p>
+      <p class="muted" style="margin:0 0 4px;"><strong>右手:</strong> ${escapeHtml(rWeap ? `${rWeap.name}（${formatGold(rWeap.price)}）` : "なし（0G）")}</p>
+      <p class="muted" style="margin:0;"><strong>左手:</strong> ${escapeHtml(lWeap ? `${lWeap.name}（${formatGold(lWeap.price)}）` : "なし（0G）")}</p>
     </div>
     <div class="stats-grid">
       <div class="stat-box"><div class="stat-label">胴体耐久</div><div class="stat-value">${core.hp}</div></div>
@@ -585,7 +609,7 @@ function renderPreview() {
   `;
 
   if (state.masterOk) {
-    const canSaveOrExport = limitCheck.ok;
+    const canSaveOrExport = check.ok;
     els.saveBuildBtn.disabled = !canSaveOrExport;
     els.saveAsNewBtn.disabled = !canSaveOrExport;
     els.exportJsonBtn.disabled = !canSaveOrExport;
@@ -601,7 +625,9 @@ function renderSavedBuilds() {
   els.savedList.innerHTML = saved
     .map((b) => {
       const tacticText = normalizeTactic(b.tactic);
-      const check = state.masterData ? validateBuildRarityLimits(b, state.masterData) : { ok: true };
+      const check = state.masterData
+        ? validateBuildConstraints(b, state.masterData)
+        : { ok: true, totalPrice: 0 };
       const badgeHtml = check.ok
         ? ""
         : ` <span class="rarity-badge rarity-legend" style="margin-left:6px;">制限違反</span>`;
@@ -609,7 +635,7 @@ function renderSavedBuilds() {
         <div class="saved-item">
           <div>
             <div class="saved-item-title">${escapeHtml(b.name || "名称未設定ゴーレム")}${badgeHtml}</div>
-            <div class="muted">${escapeHtml(tacticText)}</div>
+            <div class="muted">${escapeHtml(tacticText)} ／ ${escapeHtml(formatGold(check.totalPrice))}</div>
           </div>
           <div class="saved-item-actions">
             <button type="button" class="btn btn-secondary btn-sm" data-load-id="${escapeHtml(b.id)}" ${state.masterOk ? "" : "disabled"}>読込</button>
@@ -704,7 +730,7 @@ export function importBuildFromJsonText(jsonText) {
   try {
     parsed = JSON.parse(String(jsonText || ""));
   } catch {
-    showRarityViolationAlert(["JSONの構文が正しくありません。"]);
+    showViolationAlert(["JSONの構文が正しくありません。"]);
     return false;
   }
 
@@ -712,7 +738,7 @@ export function importBuildFromJsonText(jsonText) {
   try {
     candidate = extractBuildFromImportedJson(parsed);
   } catch (err) {
-    showRarityViolationAlert([err.message]);
+    showViolationAlert([err.message]);
     return false;
   }
 
@@ -724,21 +750,21 @@ export function importBuildFromJsonText(jsonText) {
   ];
   for (const req of requiredSlots) {
     if (!candidate[req.key]) {
-      showRarityViolationAlert([`必須スロット（${req.label}）が指定されていません。`]);
+      showViolationAlert([`必須スロット（${req.label}）が指定されていません。`]);
       return false;
     }
   }
 
-  const limitCheck = validateBuildRarityLimits(candidate, state.masterData);
-  if (!limitCheck.ok) {
-    showRarityViolationAlert(limitCheck.violations);
+  const check = validateBuildConstraints(candidate, state.masterData);
+  if (!check.ok) {
+    showViolationAlert(check.violations);
     return false;
   }
 
   state.draft = candidate;
   if (els.golemName) els.golemName.value = state.draft.name;
   normalizeDraftConstraints();
-  clearRarityViolationAlert();
+  clearViolationAlert();
   renderAll();
   showToast(`JSON「${state.draft.name}」を取り込みました`);
   return true;
@@ -981,15 +1007,15 @@ function bindEvents() {
       name: (state.draft.name || "").trim() || "名称未設定ゴーレム",
       tactic: normalizeTactic(state.draft.tactic)
     };
-    const check = validateBuildRarityLimits(normalizedDraft, state.masterData);
+    const check = validateBuildConstraints(normalizedDraft, state.masterData);
     if (!check.ok) {
-      showRarityViolationAlert(check.violations);
+      showViolationAlert(check.violations);
       return;
     }
     const saved = saveCustomBuild(normalizedDraft);
     state.draft.id = saved.id;
     state.draft.tactic = normalizeTactic(saved.tactic);
-    clearRarityViolationAlert();
+    clearViolationAlert();
     renderSavedBuilds();
     showToast(`「${saved.name}」を保存しました`);
   });
@@ -1003,9 +1029,9 @@ function bindEvents() {
       name: `${baseName} コピー`,
       tactic: normalizeTactic(state.draft.tactic)
     };
-    const check = validateBuildRarityLimits(candidate, state.masterData);
+    const check = validateBuildConstraints(candidate, state.masterData);
     if (!check.ok) {
-      showRarityViolationAlert(check.violations);
+      showViolationAlert(check.violations);
       return;
     }
     const saved = saveCustomBuild(candidate);
@@ -1013,7 +1039,7 @@ function bindEvents() {
     state.draft.name = saved.name;
     state.draft.tactic = normalizeTactic(saved.tactic);
     if (els.golemName) els.golemName.value = saved.name;
-    clearRarityViolationAlert();
+    clearViolationAlert();
     renderSavedBuilds();
     showToast(`「${saved.name}」として保存しました`);
   });
@@ -1036,9 +1062,9 @@ function bindEvents() {
       },
       tactic: tacticValue
     };
-    const check = validateBuildRarityLimits(payload.parts, state.masterData);
+    const check = validateBuildConstraints(payload.parts, state.masterData);
     if (!check.ok) {
-      showRarityViolationAlert(check.violations);
+      showViolationAlert(check.violations);
       return;
     }
     navigator.clipboard?.writeText(JSON.stringify(payload, null, 2)).then(

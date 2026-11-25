@@ -34,6 +34,18 @@
       display: flex;
       gap: 8px;
     }
+
+    .part-price {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 800;
+      background: rgba(250, 204, 21, 0.14);
+      color: #fde047;
+      border: 1px solid rgba(250, 204, 21, 0.35);
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -41,7 +53,7 @@
     <div class="header-inner">
       <div class="brand-area">
         <h1 class="brand-title">ゴーレムビルダー</h1>
-        <p class="brand-subtitle">胴体・頭部・腕部・脚部・武装を組み合わせて機体を設計</p>
+        <p class="brand-subtitle">胴体・頭部・腕部・脚部・武装を組み合わせて機体を設計（上限1,000G）</p>
       </div>
       <nav class="nav-links" aria-label="画面切り替え">
         <a class="nav-link" href="./index.html">ポータル</a>
@@ -66,7 +78,6 @@
     <div id="master-error" class="panel master-error-panel" hidden role="alert"></div>
 
     <div class="builder-3col">
-      <!-- 左カラム：ビルドJSON取込・保存済み機体 -->
       <aside class="panel builder-left-col">
         <div class="json-import-box">
           <h2 class="panel-title">ビルドJSON取込</h2>
@@ -85,7 +96,6 @@
         <div id="saved-list" class="saved-list"></div>
       </aside>
 
-      <!-- 中央カラム：ビルドのメインブロック -->
       <section class="panel builder-main-col">
         <h2 class="panel-title">1. 基本設定・プリセット</h2>
 
@@ -149,7 +159,6 @@
         </div>
       </section>
 
-      <!-- 右カラム：ビルドプレビュー・出力（スクロール追従） -->
       <aside class="panel builder-right-sticky">
         <h2 class="panel-title">ビルドプレビュー・出力</h2>
 
@@ -166,6 +175,6 @@
     </div>
   </main>
 
-  <script type="module" src="./js/builderApp.js?v=12"></script>
+  <script type="module" src="./js/builderApp.js?v=13"></script>
 </body>
 </html>

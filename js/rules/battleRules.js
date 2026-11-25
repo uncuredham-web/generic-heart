@@ -34,7 +34,8 @@ export const BATTLE_CONFIG = {
   // 戦闘初期値・上限
   initialDistance: 3,
   minDistance: 1,
-  maxTurns: 30
+  maxTurns: 30,
+  maxBudgetGold: 1000
 };
 
 export const DUAL_WIELD_ACC_PENALTY = BATTLE_CONFIG.dualWieldAccMod;
@@ -51,7 +52,11 @@ function toFiniteNumber(val, fallback = 0) {
   if (val === null || val === undefined || String(val).trim() === "") {
     return fallback;
   }
-  const normalized = String(val).trim().replace(/[＋]/g, "+").replace(/[－−]/g, "-");
+  const normalized = String(val)
+    .trim()
+    .replace(/[＋]/g, "+")
+    .replace(/[－−]/g, "-")
+    .replace(/[,，gGゴールド円]/g, "");
   const num = Number(normalized);
   return Number.isFinite(num) ? num : fallback;
 }
@@ -93,7 +98,43 @@ export function isDualLegPart(part) {
 
 export function isIntegratedWeaponPart(part) {
   const t = partText(part);
-  return t.includes("武器一体") || t.includes("一体型") || t.includes("武器内蔵");
+  return t.includes("武器一体") || textIncludes("一体型") || t.includes("武器内蔵");
+}
+
+function textIncludes(str) {
+  return false;
+}
+
+export function calcBuildPrice(build = {}, masterData = {}) {
+  const byId = masterData?.byId || {};
+  const slotKeys = [
+    "core",
+    "head",
+    "rightArm",
+    "leftArm",
+    "rightLeg",
+    "leftLeg",
+    "rightWeapon",
+    "leftWeapon"
+  ];
+  const countedMultiSlotIds = new Set();
+  let totalPrice = 0;
+
+  for (const key of slotKeys) {
+    const id = build[key];
+    if (!id) continue;
+    const part = byId[id];
+    if (!part) continue;
+
+    const isMultiSlot = isDualArmPart(part) || isDualLegPart(part) || isDualWeaponPart(part);
+    if (isMultiSlot) {
+      if (countedMultiSlotIds.has(id)) continue;
+      countedMultiSlotIds.add(id);
+    }
+    totalPrice += Math.max(0, toFiniteNumber(part.price, 0));
+  }
+
+  return totalPrice;
 }
 
 function isShieldPart(part) {
@@ -187,6 +228,7 @@ function createPartState(part, fallbackName, fallbackHp, baseMove = 0, partKey =
     cat: part?.cat || "",
     slot: part?.slot || "",
     note: part?.note || "",
+    price: Math.max(0, toFiniteNumber(part?.price, 0)),
     hp,
     maxHp: hp,
     move: toFiniteNumber(part?.move, baseMove),
@@ -223,12 +265,12 @@ export function calcTotalPartsHp(fighter) {
 
 export function calcFighterStats(build = {}, masterData = {}) {
   const byId = masterData?.byId || {};
-  const corePart = byId[build.core] || { name: "クレイコア", hp: 300, maxMp: 100, mpRegen: 15, baseCost: 5 };
-  const headPart = byId[build.head] || { name: "ストーンヘッド", hp: 100, baseCost: 1, acc: 0, evade: 0 };
-  const rArmPart = byId[build.rightArm] || { name: "ウッドアーム", hp: 90, baseCost: 1, acc: 0, evade: 0 };
-  const lArmPart = byId[build.leftArm] || { name: "ウッドアーム", hp: 90, baseCost: 1, acc: 0, evade: 0 };
-  const rLegPart = byId[build.rightLeg] || { name: "ストーンレッグ", hp: 110, baseCost: 2, move: 1, evade: 5 };
-  const lLegPart = byId[build.leftLeg] || { name: "ストーンレッグ", hp: 110, baseCost: 2, move: 1, evade: 5 };
+  const corePart = byId[build.core] || { name: "クレイコア", hp: 300, maxMp: 100, mpRegen: 15, baseCost: 5, price: 0 };
+  const headPart = byId[build.head] || { name: "ストーンヘッド", hp: 100, baseCost: 1, acc: 0, evade: 0, price: 0 };
+  const rArmPart = byId[build.rightArm] || { name: "ウッドアーム", hp: 90, baseCost: 1, acc: 0, evade: 0, price: 0 };
+  const lArmPart = byId[build.leftArm] || { name: "ウッドアーム", hp: 90, baseCost: 1, acc: 0, evade: 0, price: 0 };
+  const rLegPart = byId[build.rightLeg] || { name: "ストーンレッグ", hp: 110, baseCost: 2, move: 1, evade: 5, price: 0 };
+  const lLegPart = byId[build.leftLeg] || { name: "ストーンレッグ", hp: 110, baseCost: 2, move: 1, evade: 5, price: 0 };
   const rWeapPart = build.rightWeapon ? (byId[build.rightWeapon] || null) : null;
   const lWeapPart = build.leftWeapon ? (byId[build.leftWeapon] || null) : null;
 
@@ -249,6 +291,7 @@ export function calcFighterStats(build = {}, masterData = {}) {
 
   const baseCost = activeParts.reduce((sum, p) => sum + toFiniteNumber(p?.baseCost, 0), 0);
   const mpRegen = toFiniteNumber(corePart.mpRegen, 0) - baseCost;
+  const totalPrice = calcBuildPrice(build, masterData);
 
   const parts = {
     core: createPartState(corePart, "核", 300, 0, "core"),
@@ -345,6 +388,7 @@ export function calcFighterStats(build = {}, masterData = {}) {
   const fighter = {
     name: build.name || "名称未設定ゴーレム",
     tactic,
+    totalPrice,
     hp: maxHp,
     maxHp,
     mp: maxMp,
@@ -484,7 +528,6 @@ function getAvailableWeapons(fighter, mpLimit = fighter.mp) {
   return usableBuiltin.filter((w) => getWeaponCost(w) <= mpLimit);
 }
 
-// 現時点で使える武器がなく、かつ毎ターンMP回復が0以下（回復待ちで使えるようになる見込みがない）なら降伏対象
 function shouldSurrenderNow(fighter) {
   const hasUsableNow = getAvailableWeapons(fighter, fighter.mp).length > 0;
   if (hasUsableNow) return false;
@@ -704,7 +747,6 @@ function calcDefenderEvade(defender, evaMod) {
     headOrArmEvade += getPartEvade(defender.parts.leftArm);
   }
 
-  // 脚部破壊時は回避率を0（脚部由来・回避ボーナスともに0）にして納得感を高める
   if (!legsAlive) {
     return 0;
   }
@@ -897,7 +939,6 @@ export function runAutoBattle(build1, build2, masterData) {
       f.mp = Math.max(0, Math.min(f.maxMp, f.mp + f.mpRegen));
     }
 
-    // 現在使える攻撃手段がなく、かつ毎ターンMP回復が0以下なら降伏
     const noAttack1 = shouldSurrenderNow(f1);
     const noAttack2 = shouldSurrenderNow(f2);
     if (noAttack1 || noAttack2) {

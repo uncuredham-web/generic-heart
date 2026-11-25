@@ -117,6 +117,25 @@
       font-weight: 800;
     }
 
+    .badge-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .price-badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      background: rgba(250, 204, 21, 0.15);
+      color: #fde047;
+      border: 1px solid rgba(250, 204, 21, 0.4);
+      white-space: nowrap;
+    }
+
     .rarity-badge {
       display: inline-block;
       padding: 2px 9px;
@@ -124,7 +143,6 @@
       font-size: 0.74rem;
       font-weight: 800;
       white-space: nowrap;
-      flex-shrink: 0;
     }
 
     .rarity-legend {
@@ -209,7 +227,7 @@
     <div class="header-inner">
       <div class="brand-area">
         <h1 class="brand-title">GENERIC HEART</h1>
-        <p class="brand-subtitle">パーツマスター一覧＆フィルタ検索（Ver1.1）</p>
+        <p class="brand-subtitle">パーツマスター一覧＆フィルタ検索（Ver1.1 / 所持金上限1,000G）</p>
       </div>
       <nav class="nav-links" aria-label="画面切り替え">
         <a class="nav-link" href="./index.html">ポータル</a>
@@ -245,8 +263,8 @@
 
       <div class="filter-toolbar">
         <div>
-          <label for="search-input">キーワード検索（名前・ID・効果・備考）</label>
-          <input id="search-input" type="search" placeholder="例：レジェンド、命中、魔力、両腕占有、メギド" />
+          <label for="search-input">キーワード検索（名前・ID・価格・効果・備考）</label>
+          <input id="search-input" type="search" placeholder="例：レジェンド、100G、命中、魔力、両腕占有、メギド" />
         </div>
         <button id="reset-filter-btn" type="button" class="btn btn-secondary">フィルタ解除</button>
       </div>
@@ -254,55 +272,57 @@
 
     <div class="result-meta">
       <div id="result-count">表示中：0件</div>
-      <div class="muted">※ レジェンドは1個まで、レアは2個まで（占有パーツも1個カウント）</div>
+      <div class="muted">※ 所持金上限 1,000G / レジェンドは1個まで、レアは2個まで（占有パーツも1個カウント）</div>
     </div>
 
     <section id="parts-grid" class="parts-grid" aria-label="パーツ一覧"></section>
   </main>
 
-  <script>
-    const PARTS_DATA = [
-      { id: "C01", cat: "胴体", rarity: "コモン", name: "クレイコア", slot: "胴体", hp: 300, baseCost: 5, maxMp: 100, mpRegen: 15, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "標準的な核" },
-      { id: "C02", cat: "胴体", rarity: "アンコモン", name: "アイアンコア", slot: "胴体", hp: 420, baseCost: 6, maxMp: 90, mpRegen: 12, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "高耐久・省エネ向け" },
-      { id: "C03", cat: "胴体", rarity: "アンコモン", name: "マナクリスタル", slot: "胴体", hp: 240, baseCost: 8, maxMp: 150, mpRegen: 22, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "魔力武器向けの核" },
-      { id: "C04", cat: "胴体", rarity: "レア", name: "スチームボイラー", slot: "胴体", hp: 380, baseCost: 12, maxMp: 130, mpRegen: 28, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "高出力・高燃費" },
-      { id: "C05", cat: "胴体", rarity: "レジェンド", name: "エーテルリアクター", slot: "胴体", hp: 350, baseCost: 10, maxMp: 200, mpRegen: 35, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "圧倒的魔力容量と回復力" },
+  <script type="module">
+    import { loadGolemMasterData, toFiniteNumber } from "./js/data/golemData.js";
 
-      { id: "H01", cat: "頭部", rarity: "コモン", name: "ストーンヘッド", slot: "頭部", hp: 100, baseCost: 1, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "標準的な頭部" },
-      { id: "H02", cat: "頭部", rarity: "アンコモン", name: "スカウトアイ", slot: "頭部", hp: 70, baseCost: 2, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 15, move: 0, evade: 0, note: "命中率+15%" },
-      { id: "H03", cat: "頭部", rarity: "レア", name: "ガーゴイルヘッド", slot: "頭部", hp: 90, baseCost: 4, maxMp: 0, mpRegen: 0, power: 40, useCost: 12, range: "1~2", acc: 5, move: 0, evade: 0, note: "武器内蔵（魔力ブレス）" },
-      { id: "H04", cat: "頭部", rarity: "レジェンド", name: "オラクルクラウン", slot: "頭部", hp: 80, baseCost: 6, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 25, move: 0, evade: 0, note: "命中+25%・AI指示精度UP" },
-      { id: "H05", cat: "頭部", rarity: "レア", name: "タクティカルバイザー", slot: "頭部", hp: 85, baseCost: 3, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 10, move: 0, evade: 5, note: "命中+10%・回避+5%の戦術バイザー" },
+    const FALLBACK_PARTS_DATA = [
+      { id: "C01", cat: "胴体", rarity: "コモン", name: "クレイコア", slot: "胴体", price: 120, hp: 300, baseCost: 5, maxMp: 100, mpRegen: 15, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "標準的な核" },
+      { id: "C02", cat: "胴体", rarity: "アンコモン", name: "アイアンコア", slot: "胴体", price: 180, hp: 420, baseCost: 6, maxMp: 90, mpRegen: 12, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "高耐久・省エネ向け" },
+      { id: "C03", cat: "胴体", rarity: "アンコモン", name: "マナクリスタル", slot: "胴体", price: 190, hp: 240, baseCost: 8, maxMp: 150, mpRegen: 22, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "魔力武器向けの核" },
+      { id: "C04", cat: "胴体", rarity: "レア", name: "スチームボイラー", slot: "胴体", price: 260, hp: 380, baseCost: 12, maxMp: 130, mpRegen: 28, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "高出力・高燃費" },
+      { id: "C05", cat: "胴体", rarity: "レジェンド", name: "エーテルリアクター", slot: "胴体", price: 320, hp: 350, baseCost: 10, maxMp: 200, mpRegen: 35, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "圧倒的魔力容量と回復力" },
 
-      { id: "A01", cat: "腕部", rarity: "コモン", name: "ウッドアーム", slot: "片腕", hp: 90, baseCost: 1, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "標準的な腕部" },
-      { id: "A02", cat: "腕部", rarity: "アンコモン", name: "ブロンズアーム", slot: "片腕", hp: 140, baseCost: 2, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "高耐久の重装甲腕" },
-      { id: "A03", cat: "腕部", rarity: "レア", name: "パイルアーム", slot: "片腕", hp: 120, baseCost: 3, maxMp: 0, mpRegen: 0, power: 75, useCost: 0, range: "1", acc: 0, move: 0, evade: 0, note: "武器一体型（武器装備不可）" },
-      { id: "A04", cat: "腕部", rarity: "レジェンド", name: "セラフィムアーム", slot: "片腕", hp: 110, baseCost: 5, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 10, move: 0, evade: 0, note: "装備武器の威力+20%" },
-      { id: "A05", cat: "腕部", rarity: "レジェンド", name: "ヴァルキリーアーム", slot: "片腕", hp: 130, baseCost: 6, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 15, move: 0, evade: 5, note: "命中+15%・回避+5%の高機動腕部" },
+      { id: "H01", cat: "頭部", rarity: "コモン", name: "ストーンヘッド", slot: "頭部", price: 60, hp: 100, baseCost: 1, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "標準的な頭部" },
+      { id: "H02", cat: "頭部", rarity: "アンコモン", name: "スカウトアイ", slot: "頭部", price: 100, hp: 70, baseCost: 2, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 15, move: 0, evade: 0, note: "命中率+15%" },
+      { id: "H03", cat: "頭部", rarity: "レア", name: "ガーゴイルヘッド", slot: "頭部", price: 160, hp: 90, baseCost: 4, maxMp: 0, mpRegen: 0, power: 40, useCost: 12, range: "1~2", acc: 5, move: 0, evade: 0, note: "武器内蔵（魔力ブレス）" },
+      { id: "H04", cat: "頭部", rarity: "レジェンド", name: "オラクルクラウン", slot: "頭部", price: 220, hp: 80, baseCost: 6, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 25, move: 0, evade: 0, note: "命中+25%・AI指示精度UP" },
+      { id: "H05", cat: "頭部", rarity: "レア", name: "タクティカルバイザー", slot: "頭部", price: 150, hp: 85, baseCost: 3, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 10, move: 0, evade: 5, note: "命中+10%・回避+5%の戦術バイザー" },
 
-      { id: "L01", cat: "脚部", rarity: "コモン", name: "ストーンレッグ", slot: "片脚", hp: 110, baseCost: 2, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 1, evade: 5, note: "標準的な脚部（左右合計で移動2）" },
-      { id: "L02", cat: "脚部", rarity: "アンコモン", name: "ウィンドレッグ", slot: "片脚", hp: 85, baseCost: 4, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 2, evade: 10, note: "軽量・高機動脚" },
-      { id: "L03", cat: "脚部", rarity: "レア", name: "クローラー", slot: "両脚占有", hp: 260, baseCost: 7, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 1, evade: 0, note: "移動攻撃の命中低下無効" },
-      { id: "L04", cat: "脚部", rarity: "レア", name: "スパイダーレッグ", slot: "両脚占有", hp: 200, baseCost: 9, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 5, move: 2, evade: 5, note: "高耐久の多脚ユニット" },
-      { id: "L05", cat: "脚部", rarity: "レジェンド", name: "フロートユニット", slot: "両脚占有", hp: 150, baseCost: 12, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 10, move: 3, evade: 20, note: "超機動・回避率UP" },
-      { id: "L06", cat: "脚部", rarity: "レア", name: "ホバーレッグ", slot: "両脚占有", hp: 170, baseCost: 8, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 5, move: 2, evade: 12, note: "高機動ホバー脚・回避率+12%" },
+      { id: "A01", cat: "腕部", rarity: "コモン", name: "ウッドアーム", slot: "片腕", price: 60, hp: 90, baseCost: 1, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "標準的な腕部" },
+      { id: "A02", cat: "腕部", rarity: "アンコモン", name: "ブロンズアーム", slot: "片腕", price: 100, hp: 140, baseCost: 2, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "高耐久の重装甲腕" },
+      { id: "A03", cat: "腕部", rarity: "レア", name: "パイルアーム", slot: "片腕", price: 160, hp: 120, baseCost: 3, maxMp: 0, mpRegen: 0, power: 75, useCost: 0, range: "1", acc: 0, move: 0, evade: 0, note: "武器一体型（武器装備不可）" },
+      { id: "A04", cat: "腕部", rarity: "レジェンド", name: "セラフィムアーム", slot: "片腕", price: 220, hp: 110, baseCost: 5, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 10, move: 0, evade: 0, note: "装備武器の威力+20%" },
+      { id: "A05", cat: "腕部", rarity: "レジェンド", name: "ヴァルキリーアーム", slot: "片腕", price: 240, hp: 130, baseCost: 6, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 15, move: 0, evade: 5, note: "命中+15%・回避+5%の高機動腕部" },
 
-      { id: "W01", cat: "物理武器", rarity: "コモン", name: "アイアンソード", slot: "片手", hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 45, useCost: 0, range: "1~2", acc: 0, move: 0, evade: 0, note: "標準的な近接武器" },
-      { id: "W02", cat: "物理武器", rarity: "コモン", name: "スリングショット", slot: "片手", hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 30, useCost: 0, range: "3~4", acc: -5, move: 0, evade: 0, note: "消費0の中距離牽制武器" },
-      { id: "W03", cat: "物理武器", rarity: "アンコモン", name: "ヘビーハンマー", slot: "両腕占有", hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 115, useCost: 0, range: "1~2", acc: -15, move: 0, evade: 0, note: "威力上方修正・高火力重槌" },
-      { id: "W04", cat: "物理武器", rarity: "レア", name: "連装クロスボウ", slot: "両腕占有", hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 95, useCost: 0, range: "2~4", acc: 5, move: 0, evade: 0, note: "威力上方修正・安定の中距離弩" },
-      { id: "W09", cat: "物理武器", rarity: "レア", name: "ツインダガー", slot: "片手", hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 52, useCost: 0, range: "1~2", acc: 10, move: 0, evade: 0, note: "連撃・命中補正+10%の軽快な短剣" },
+      { id: "L01", cat: "脚部", rarity: "コモン", name: "ストーンレッグ", slot: "片脚", price: 70, hp: 110, baseCost: 2, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 1, evade: 5, note: "標準的な脚部（左右合計で移動2）" },
+      { id: "L02", cat: "脚部", rarity: "アンコモン", name: "ウィンドレッグ", slot: "片脚", price: 110, hp: 85, baseCost: 4, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 2, evade: 10, note: "軽量・高機動脚" },
+      { id: "L03", cat: "脚部", rarity: "レア", name: "クローラー", slot: "両脚占有", price: 180, hp: 260, baseCost: 7, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 1, evade: 0, note: "移動攻撃の命中低下無効" },
+      { id: "L04", cat: "脚部", rarity: "レア", name: "スパイダーレッグ", slot: "両脚占有", price: 210, hp: 200, baseCost: 9, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 5, move: 2, evade: 5, note: "高耐久の多脚ユニット" },
+      { id: "L05", cat: "脚部", rarity: "レジェンド", name: "フロートユニット", slot: "両脚占有", price: 280, hp: 150, baseCost: 12, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 10, move: 3, evade: 20, note: "超機動・回避率UP" },
+      { id: "L06", cat: "脚部", rarity: "レア", name: "ホバーレッグ", slot: "両脚占有", price: 190, hp: 170, baseCost: 8, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 5, move: 2, evade: 12, note: "高機動ホバー脚・回避率+12%" },
 
-      { id: "W05", cat: "魔力武器", rarity: "コモン", name: "ファイアワンド", slot: "片手", hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 55, useCost: 15, range: "3~4", acc: 0, move: 0, evade: 0, note: "標準的な魔力武器" },
-      { id: "W06", cat: "魔力武器", rarity: "アンコモン", name: "ライトニングスピア", slot: "片手", hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 70, useCost: 20, range: "1~3", acc: 5, move: 0, evade: 0, note: "近〜中距離の魔力槍" },
-      { id: "W07", cat: "魔力武器", rarity: "レア", name: "スナイプライフル", slot: "両腕占有", hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 130, useCost: 30, range: "4~5", acc: 15, move: 0, evade: 0, note: "威力上方修正・遠距離精密狙撃銃" },
-      { id: "W08", cat: "魔力武器", rarity: "レジェンド", name: "メギドキャノン", slot: "両腕占有", hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 210, useCost: 65, range: "3~5", acc: 0, move: 0, evade: 0, note: "威力上方修正・超火力決戦砲" },
-      { id: "W10", cat: "魔力武器", rarity: "レジェンド", name: "アークセイバー", slot: "片手", hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 125, useCost: 25, range: "1~3", acc: 10, move: 0, evade: 0, note: "高出力の魔力斬撃剣・命中+10%" },
+      { id: "W01", cat: "物理武器", rarity: "コモン", name: "アイアンソード", slot: "片手", price: 80, hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 45, useCost: 0, range: "1~2", acc: 0, move: 0, evade: 0, note: "標準的な近接武器" },
+      { id: "W02", cat: "物理武器", rarity: "コモン", name: "スリングショット", slot: "片手", price: 70, hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 30, useCost: 0, range: "3~4", acc: -5, move: 0, evade: 0, note: "消費0の中距離牽制武器" },
+      { id: "W03", cat: "物理武器", rarity: "アンコモン", name: "ヘビーハンマー", slot: "両腕占有", price: 140, hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 115, useCost: 0, range: "1~2", acc: -15, move: 0, evade: 0, note: "威力上方修正・高火力重槌" },
+      { id: "W04", cat: "物理武器", rarity: "レア", name: "連装クロスボウ", slot: "両腕占有", price: 180, hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 95, useCost: 0, range: "2~4", acc: 5, move: 0, evade: 0, note: "威力上方修正・安定の中距離弩" },
+      { id: "W09", cat: "物理武器", rarity: "レア", name: "ツインダガー", slot: "片手", price: 150, hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 52, useCost: 0, range: "1~2", acc: 10, move: 0, evade: 0, note: "連撃・命中補正+10%の軽快な短剣" },
 
-      { id: "S01", cat: "シールド", rarity: "コモン", name: "ウッドシールド", slot: "片手", hp: 120, baseCost: 0, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "装備腕の被ダメージを肩代わり" },
-      { id: "S02", cat: "シールド", rarity: "アンコモン", name: "アイアンシールド", slot: "片手", hp: 220, baseCost: 1, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "高耐久の鉄盾（基礎消費+1）" },
-      { id: "S03", cat: "シールド", rarity: "レア", name: "イージスシールド", slot: "片手", hp: 180, baseCost: 3, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "魔力武器のダメージを半減して受ける" },
-      { id: "S04", cat: "シールド", rarity: "レア", name: "ディフレクトシールド", slot: "片手", hp: 160, baseCost: 2, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 8, note: "回避+8%・装備腕の被ダメージを肩代わり" }
+      { id: "W05", cat: "魔力武器", rarity: "コモン", name: "ファイアワンド", slot: "片手", price: 90, hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 55, useCost: 15, range: "3~4", acc: 0, move: 0, evade: 0, note: "標準的な魔力武器" },
+      { id: "W06", cat: "魔力武器", rarity: "アンコモン", name: "ライトニングスピア", slot: "片手", price: 130, hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 70, useCost: 20, range: "1~3", acc: 5, move: 0, evade: 0, note: "近〜中距離の魔力槍" },
+      { id: "W07", cat: "魔力武器", rarity: "レア", name: "スナイプライフル", slot: "両腕占有", price: 190, hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 130, useCost: 30, range: "4~5", acc: 15, move: 0, evade: 0, note: "威力上方修正・遠距離精密狙撃銃" },
+      { id: "W08", cat: "魔力武器", rarity: "レジェンド", name: "メギドキャノン", slot: "両腕占有", price: 260, hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 210, useCost: 65, range: "3~5", acc: 0, move: 0, evade: 0, note: "威力上方修正・超火力決戦砲" },
+      { id: "W10", cat: "魔力武器", rarity: "レジェンド", name: "アークセイバー", slot: "片手", price: 230, hp: 0, baseCost: 0, maxMp: 0, mpRegen: 0, power: 125, useCost: 25, range: "1~3", acc: 10, move: 0, evade: 0, note: "高出力の魔力斬撃剣・命中+10%" },
+
+      { id: "S01", cat: "シールド", rarity: "コモン", name: "ウッドシールド", slot: "片手", price: 70, hp: 120, baseCost: 0, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "装備腕の被ダメージを肩代わり" },
+      { id: "S02", cat: "シールド", rarity: "アンコモン", name: "アイアンシールド", slot: "片手", price: 110, hp: 220, baseCost: 1, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "高耐久の鉄盾（基礎消費+1）" },
+      { id: "S03", cat: "シールド", rarity: "レア", name: "イージスシールド", slot: "片手", price: 170, hp: 180, baseCost: 3, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 0, note: "魔力武器のダメージを半減して受ける" },
+      { id: "S04", cat: "シールド", rarity: "レア", name: "ディフレクトシールド", slot: "片手", price: 160, hp: 160, baseCost: 2, maxMp: 0, mpRegen: 0, power: 0, useCost: 0, range: "-", acc: 0, move: 0, evade: 8, note: "回避+8%・装備腕の被ダメージを肩代わり" }
     ];
 
     const RARITIES = ["すべて", "レジェンド", "レア", "アンコモン", "コモン"];
@@ -310,6 +330,7 @@
     const SLOT_FILTERS = ["すべて", "両腕占有", "両脚占有", "単枠・片手"];
 
     const state = {
+      parts: FALLBACK_PARTS_DATA,
       rarity: "すべて",
       cat: "すべて",
       slotGroup: "すべて",
@@ -323,6 +344,11 @@
     const resetBtn = document.getElementById("reset-filter-btn");
     const countEl = document.getElementById("result-count");
     const gridEl = document.getElementById("parts-grid");
+
+    function formatGold(amount) {
+      const n = Math.max(0, Math.round(toFiniteNumber(amount, 0)));
+      return `${n.toLocaleString()}G`;
+    }
 
     function rarityClass(rarity) {
       if (rarity === "レジェンド") return "rarity-legend";
@@ -340,7 +366,7 @@
     }
 
     function escapeHtml(str) {
-      return String(str)
+      return String(str ?? "")
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
@@ -367,18 +393,19 @@
 
     function renderParts() {
       const kw = state.keyword.trim().toLowerCase();
-      const filtered = PARTS_DATA.filter((p) => {
+      const filtered = state.parts.filter((p) => {
         if (state.rarity !== "すべて" && p.rarity !== state.rarity) return false;
         if (state.cat !== "すべて" && p.cat !== state.cat) return false;
         if (!matchSlotGroup(p, state.slotGroup)) return false;
         if (kw) {
-          const hay = `${p.id} ${p.cat} ${p.rarity} ${p.name} ${p.slot} ${p.range} ${p.note}`.toLowerCase();
+          const priceText = formatGold(p.price).toLowerCase();
+          const hay = `${p.id} ${p.cat} ${p.rarity} ${p.name} ${p.slot} ${p.range} ${p.note} ${p.price} ${priceText}`.toLowerCase();
           if (!hay.includes(kw)) return false;
         }
         return true;
       });
 
-      countEl.textContent = `表示中：${filtered.length}件 / 全${PARTS_DATA.length}件`;
+      countEl.textContent = `表示中：${filtered.length}件 / 全${state.parts.length}件`;
 
       if (filtered.length === 0) {
         gridEl.innerHTML = `<div class="panel"><p class="muted empty-note">条件に一致するパーツはありません。</p></div>`;
@@ -398,17 +425,22 @@
                     <div class="part-id">${escapeHtml(p.id)}</div>
                     <h3 class="part-title">${escapeHtml(p.name)}</h3>
                   </div>
-                  <span class="rarity-badge ${rarityClass(p.rarity)}">${escapeHtml(p.rarity)}</span>
+                  <div class="badge-group">
+                    <span class="price-badge">${escapeHtml(formatGold(p.price))}</span>
+                    <span class="rarity-badge ${rarityClass(p.rarity)}">${escapeHtml(p.rarity)}</span>
+                  </div>
                 </div>
                 <div class="part-meta-line">
                   <span class="part-meta-pill">${escapeHtml(p.cat)}</span>
                   <span class="part-meta-pill">${escapeHtml(p.slot)}</span>
+                  <span class="part-meta-pill">価格 ${escapeHtml(formatGold(p.price))}</span>
                   <span class="part-meta-pill">コスト ${escapeHtml(p.baseCost)}</span>
                   <span class="part-meta-pill">射程 ${escapeHtml(p.range)}</span>
                 </div>
                 <p class="part-note">${escapeHtml(p.note)}</p>
               </div>
               <div class="part-specs">
+                <div class="spec-item"><span class="spec-k">価格</span><span class="spec-v">${escapeHtml(formatGold(p.price))}</span></div>
                 <div class="spec-item"><span class="spec-k">耐久/HP</span><span class="spec-v">${p.hp}</span></div>
                 <div class="spec-item"><span class="spec-k">威力</span><span class="spec-v">${p.power}</span></div>
                 <div class="spec-item"><span class="spec-k">最大MP / 回復</span><span class="spec-v">${p.maxMp} / ${regenStr}</span></div>
@@ -444,6 +476,13 @@
     });
 
     renderAll();
+
+    loadGolemMasterData().then((res) => {
+      if (res && res.ok && Array.isArray(res.data?.parts) && res.data.parts.length > 0) {
+        state.parts = res.data.parts;
+        renderParts();
+      }
+    }).catch(() => {});
   </script>
 </body>
 </html>

@@ -3,29 +3,117 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GENERIC HEART | ゴーレムビルダー＆アリーナ</title>
+  <title>ジェネリックハート | ゴーレムバトルポータル</title>
   <link rel="stylesheet" href="./css/common.css" />
-  <link rel="stylesheet" href="./css/index.css" />
   <style>
-    .card-lead {
-      margin: 0;
+    .hero-section {
+      margin-bottom: 24px;
     }
 
-    .card-action {
-      width: 100%;
+    .hero-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
+      gap: 20px;
+      align-items: center;
     }
 
-    .portal-footer-note {
-      margin-top: 0;
-      padding-top: 0;
-      border-top: none;
+    .hero-title {
+      margin: 0 0 8px;
+      font-size: 1.65rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
     }
 
-    .sub-nav-links {
+    .hero-lead {
+      margin: 0 0 16px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .hero-actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 14px;
+      gap: 10px;
+    }
+
+    .hero-highlights {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .highlight-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+    }
+
+    .highlight-label {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .highlight-value {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .module-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .module-card-title {
+      margin: 0 0 6px;
+      font-size: 1.12rem;
+      font-weight: 800;
+    }
+
+    .module-card-desc {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    .module-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    .module-table th,
+    .module-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
+    }
+
+    .module-table th {
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    @media (max-width: 820px) {
+      .hero-panel {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -33,8 +121,8 @@
   <header class="site-header">
     <div class="header-inner">
       <div class="brand-area">
-        <h1 class="brand-title">GENERIC HEART</h1>
-        <p class="brand-subtitle">ゴーレムビルダー＆ゴーレムアリーナ ポータル</p>
+        <h1 class="brand-title">ジェネリックハート</h1>
+        <p class="brand-subtitle">ゴーレムカスタマイズ＆オートバトルシステム</p>
       </div>
       <nav class="nav-links" aria-label="画面切り替え">
         <a class="nav-link is-active" href="./index.html" aria-current="page">ポータル</a>
@@ -47,107 +135,113 @@
   </header>
 
   <main class="page-container">
-    <section class="hero-panel">
-      <div class="hero-eyebrow">PARTS MASTER VER1.1 / MODULAR ARCHITECTURE</div>
-      <h2 class="hero-title">機体を組み上げ、アリーナで1on1対戦を検証する</h2>
-      <p class="hero-desc">
-        「ジェネリックハート_パーツマスター_Ver1.1」をもとに機体を設計し、「ゴーレムアリーナ」で1on1オートバトルの挙動やバランス、10連戦の勝率などを検証できます。
-      </p>
-      <div class="sub-nav-links">
-        <a href="./rule.html" class="btn btn-secondary btn-sm">ルールガイドを見る</a>
-        <a href="./parts.html" class="btn btn-secondary btn-sm">パーツ一覧を見る</a>
+    <section class="hero-section">
+      <div class="panel hero-panel">
+        <div>
+          <h2 class="hero-title">パーツを組み合わせて、最強ゴーレムを編成しよう</h2>
+          <p class="hero-lead">
+            1機体あたり1,000Gの予算とレアリティ制限の中で胴体・頭部・腕部・脚部・武装を組み上げ、
+            ゴーレムアリーナで1on1オートバトルや10連戦の検証を行えます。
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="./builder.html">ビルダーを開く</a>
+            <a class="btn btn-secondary" href="./arena.html">アリーナへ進む</a>
+            <a class="btn btn-secondary" href="./parts.html">パーツ一覧を見る</a>
+            <a class="btn btn-secondary" href="./rule.html">ルールガイドを読む</a>
+          </div>
+        </div>
+        <div class="hero-highlights">
+          <div class="highlight-box">
+            <div class="highlight-label">所持金上限</div>
+            <div class="highlight-value">1,000G / 機体</div>
+          </div>
+          <div class="highlight-box">
+            <div class="highlight-label">レアリティ制限</div>
+            <div class="highlight-value">レジェンド1 / レア2</div>
+          </div>
+          <div class="highlight-box">
+            <div class="highlight-label">バトル上限</div>
+            <div class="highlight-value">最大 30 ターン</div>
+          </div>
+          <div class="highlight-box">
+            <div class="highlight-label">パーツマスター</div>
+            <div class="highlight-value">Ver1.1（price対応）</div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="portal-grid" aria-label="メイン機能">
-      <article class="portal-card">
+    <section class="module-grid" aria-label="主要機能">
+      <article class="panel module-card">
         <div>
-          <div class="portal-card-top">
-            <h3 class="portal-card-title">ゴーレムビルダー</h3>
-            <span class="tag">DESIGN &amp; SAVE</span>
-          </div>
-          <p class="muted card-lead">
-            3カラム構成で保存機体・JSON取込、中央のパーツ選択、右側の追従プレビューを確認しながら機体を組み立てられます。
+          <h3 class="module-card-title">ゴーレムビルダー</h3>
+          <p class="module-card-desc">
+            各部位パーツとさくせんを選び、価格・魔力収支・移動力・制限チェックを確認しながら機体を保存・JSON出力できます。
           </p>
-          <ul class="portal-features">
-            <li>レジェンド1個／レア2個の制限バリデーション＆占有パーツ連動制御</li>
-            <li>コモン／アンコモン限定プリセット5体の反映＆ビルドJSON入出力</li>
-            <li>ブラウザ保存（localStorage）＆ パーツマスターCSV連携</li>
-          </ul>
         </div>
         <div>
-          <a href="./builder.html" class="btn btn-primary card-action">ゴーレムビルダーを開く →</a>
+          <a class="btn btn-primary btn-sm" href="./builder.html">ビルダーを起動</a>
         </div>
       </article>
 
-      <article class="portal-card is-arena">
+      <article class="panel module-card">
         <div>
-          <div class="portal-card-top">
-            <h3 class="portal-card-title">ゴーレムアリーナ</h3>
-            <span class="tag">1ON1 AUTO BATTLE</span>
-          </div>
-          <p class="muted card-lead">
-            プリセットや保存済み機体を選んで1on1オートバトルを実行し、詳細ログや10連戦の勝敗集計を確認できます。
+          <h3 class="module-card-title">ゴーレムアリーナ</h3>
+          <p class="module-card-desc">
+            選択した2機体のオートバトルや10連戦、ランダム対戦を実行し、行動ログや勝敗理由を確認できます。
           </p>
-          <ul class="portal-features">
-            <li>機体1／機体2の任意対戦＆ランダム対戦（保存機体・プリセット連動）</li>
-            <li>「バトル開始×10」「ランダム対戦×10」で勝数サマリーと10戦ログを表示</li>
-            <li>レアリティ制限違反ビルドの出撃ブロック＆勝利カードハイライト</li>
-          </ul>
         </div>
         <div>
-          <a href="./arena.html" class="btn btn-arena card-action">ゴーレムアリーナを開く →</a>
+          <a class="btn btn-secondary btn-sm" href="./arena.html">アリーナを起動</a>
+        </div>
+      </article>
+
+      <article class="panel module-card">
+        <div>
+          <h3 class="module-card-title">パーツ一覧＆ルールガイド</h3>
+          <p class="module-card-desc">
+            全パーツの価格・性能・占有条件の絞り込み検索と、戦闘ルール・さくせん仕様を確認できます。
+          </p>
+        </div>
+        <div>
+          <a class="btn btn-secondary btn-sm" href="./parts.html">パーツ一覧へ</a>
         </div>
       </article>
     </section>
 
-    <section class="info-grid">
-      <div class="panel">
-        <h3 class="panel-title">クイックガイド</h3>
-        <ol class="guide-list">
-          <li><strong>ビルダーで機体を作成</strong>：機体名や「さくせん」、各部位パーツを選び、制限内であることを確認して「保存する」を押します。</li>
-          <li><strong>アリーナで対戦テスト</strong>：保存した機体やプリセットを選び、「バトル開始」または「×10」ボタンで対戦結果を検証できます。</li>
-          <li><strong>ビルドデータの共有</strong>：ビルダーの「JSONコピー」で出力したJSONを貼り付けると、別の画面や相手にも機体を渡せます。</li>
-        </ol>
-        <div class="quick-footer">
-          <span class="muted">※ カスタム機体は各ブラウザの localStorage に保存されます。</span>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3 class="panel-title">モジュール一覧</h3>
-        <div class="module-table-wrap">
-          <table class="module-table">
-            <thead>
-              <tr>
-                <th>対象</th>
-                <th>ファイル</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>共通／画面別CSS</td>
-                <td><code>css/common.css</code>, <code>css/index.css</code>, <code>css/builder.css</code>, <code>css/arena.css</code></td>
-              </tr>
-              <tr>
-                <td>ガイド／一覧画面</td>
-                <td><code>rule.html</code>, <code>parts.html</code></td>
-              </tr>
-              <tr>
-                <td>マスター／プリセット</td>
-                <td><code>js/data/golemData.js</code></td>
-              </tr>
-              <tr>
-                <td>バトルルール</td>
-                <td><code>js/rules/battleRules.js</code></td>
-              </tr>
-              <tr>
-                <td>保存／画面制御</td>
-                <td><code>js/ui/storage.js</code>, <code>js/builderApp.js</code>, <code>js/arenaApp.js</code></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+    <section class="panel" aria-label="システム構成">
+      <h2 class="panel-title">モジュール構成</h2>
+      <div class="table-wrap">
+        <table class="module-table">
+          <thead>
+            <tr>
+              <th>ファイル</th>
+              <th>役割</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>js/data/golemData.js</code></td>
+              <td>パーツマスターCSV取得・パース（<code>price</code> 含む）・プリセット定義</td>
+            </tr>
+            <tr>
+              <td><code>js/builderApp.js</code></td>
+              <td>機体編成・価格表示・1,000G上限＆レアリティ制限バリデーション・JSON入出力</td>
+            </tr>
+            <tr>
+              <td><code>js/arenaApp.js</code></td>
+              <td>対戦機体選択・所持金上限チェック・単発／10連戦／ランダム対戦制御</td>
+            </tr>
+            <tr>
+              <td><code>js/rules/battleRules.js</code></td>
+              <td>ステータス算出・行動AI・命中／回避／部位破壊／シールド／決着判定</td>
+            </tr>
+            <tr>
+              <td><code>js/ui/storage.js</code></td>
+              <td>カスタムビルドのローカルストレージ保存・読込・削除・トースト通知</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
   </main>

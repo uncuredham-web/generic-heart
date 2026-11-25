@@ -2,7 +2,9 @@ import {
   loadGolemMasterData,
   TACTIC_OPTIONS,
   DEFAULT_TACTIC,
-  PRESET_BUILDS
+  PRESET_BUILDS,
+  BUDGET_LIMIT_GOLD,
+  toFiniteNumber
 } from "./data/golemData.js";
 import { loadSavedBuilds, showToast } from "./ui/storage.js";
 import {
@@ -17,6 +19,8 @@ export const RARITY_LIMITS = {
   legendMax: 1,
   rareMax: 2
 };
+
+export const BUDGET_LIMIT = BUDGET_LIMIT_GOLD || 1000;
 
 const TACTICS = Array.isArray(TACTIC_OPTIONS) && TACTIC_OPTIONS.length > 0
   ? TACTIC_OPTIONS
@@ -177,15 +181,17 @@ function escapeHtml(str) {
     .replaceAll("'", "&#39;");
 }
 
-/**
- * ビルド内のレジェンド／レア個数を集計し、制限違反をチェックする
- * 両腕・両脚・両手占有パーツはパーツ単位で1カウントとする
- */
-export function validateBuildRarityLimits(build = {}, masterData = state.masterData) {
+function formatGold(amount) {
+  const n = Math.max(0, Math.round(toFiniteNumber(amount, 0)));
+  return `${n.toLocaleString()}G`;
+}
+
+export function validateBuildConstraints(build = {}, masterData = state.masterData) {
   const byId = masterData?.byId || {};
   const violations = [];
   let legendCount = 0;
   let rareCount = 0;
+  let totalPrice = 0;
 
   const slotEntries = [
     { key: "core", id: build.core, label: "胴体" },
@@ -218,6 +224,8 @@ export function validateBuildRarityLimits(build = {}, masterData = state.masterD
       countedMultiSlotIds.add(entry.id);
     }
 
+    totalPrice += Math.max(0, toFiniteNumber(part.price, 0));
+
     const rarity = String(part.rarity || "コモン").trim();
     if (rarity === "レジェンド") {
       legendCount += 1;
@@ -236,14 +244,23 @@ export function validateBuildRarityLimits(build = {}, masterData = state.masterD
       `レアパーツは${RARITY_LIMITS.rareMax}個までです（現在: ${rareCount}個）。`
     );
   }
+  if (totalPrice > BUDGET_LIMIT) {
+    violations.push(
+      `所持金上限（${formatGold(BUDGET_LIMIT)}）を超過しています（合計: ${formatGold(totalPrice)}）。`
+    );
+  }
 
   return {
     ok: violations.length === 0,
     legendCount,
     rareCount,
+    totalPrice,
+    budgetLimit: BUDGET_LIMIT,
     violations
   };
 }
+
+export const validateBuildRarityLimits = validateBuildConstraints;
 
 function setActiveBattleButton(activeBtn) {
   BATTLE_BUTTONS.forEach((btn) => {
@@ -264,15 +281,15 @@ function updateBattleButtonsState() {
   const f1 = state.builds.find((b) => b.id === state.fighter1Id) || null;
   const f2 = state.builds.find((b) => b.id === state.fighter2Id) || null;
 
-  const check1 = f1 ? validateBuildRarityLimits(f1, state.masterData) : { ok: false };
-  const check2 = f2 ? validateBuildRarityLimits(f2, state.masterData) : { ok: false };
+  const check1 = f1 ? validateBuildConstraints(f1, state.masterData) : { ok: false };
+  const check2 = f2 ? validateBuildConstraints(f2, state.masterData) : { ok: false };
   const canStart = Boolean(f1 && f2 && check1.ok && check2.ok);
 
   if (els.startBattleBtn) els.startBattleBtn.disabled = !canStart;
   if (els.startBattle10Btn) els.startBattle10Btn.disabled = !canStart;
 
   const legalCount = state.builds.filter(
-    (b) => validateBuildRarityLimits(b, state.masterData).ok
+    (b) => validateBuildConstraints(b, state.masterData).ok
   ).length;
   if (els.randomBattleBtn) els.randomBattleBtn.disabled = legalCount < 2;
   if (els.randomBattle10Btn) els.randomBattle10Btn.disabled = legalCount < 2;
@@ -365,6 +382,12 @@ function getAllBuilds() {
   return merged;
 }
 
+function formatPartLabelWithPrice(partId) {
+  if (!partId || !state.masterData?.byId?.[partId]) return "なし（0G）";
+  const p = state.masterData.byId[partId];
+  return `${p.name}（${formatGold(p.price)}）`;
+}
+
 function renderFighterCard(targetEl, build, isWinner = false) {
   if (!targetEl) return;
   if (!state.masterOk || !state.masterData) {
@@ -382,18 +405,18 @@ function renderFighterCard(targetEl, build, isWinner = false) {
     tactic: normalizeTactic(build.tactic)
   };
   const st = calcFighterStats(normalizedBuild, state.masterData);
-  const eq = st.equipmentSummary;
   const mpRegenLabel = st.mpRegen >= 0 ? `+${st.mpRegen}` : `${st.mpRegen}`;
   const winnerRow = isWinner
     ? `<div style="margin-bottom:6px;"><span class="tag" style="background:#059669;color:#ffffff;border-color:#10b981;">勝利</span></div>`
     : "";
 
-  const limitCheck = validateBuildRarityLimits(normalizedBuild, state.masterData);
-  const violationHtml = limitCheck.ok
+  const check = validateBuildConstraints(normalizedBuild, state.masterData);
+  const overBudget = check.totalPrice > BUDGET_LIMIT;
+  const violationHtml = check.ok
     ? ""
     : `<div class="rarity-alert" role="alert" style="margin-bottom:10px;padding:8px 10px;border-radius:6px;background:rgba(239,68,68,0.14);border:1px solid rgba(248,113,113,0.6);color:#fecaca;font-size:0.82rem;line-height:1.45;">
         <strong>出撃不可（制限違反）</strong><br/>
-        ${escapeHtml(limitCheck.violations.join(" / "))}
+        ${escapeHtml(check.violations.join(" / "))}
       </div>`;
 
   targetEl.innerHTML = `
@@ -403,17 +426,21 @@ function renderFighterCard(targetEl, build, isWinner = false) {
       <h3 style="margin:0;font-size:1.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(st.name)}</h3>
       <span class="tag" style="white-space:nowrap;flex-shrink:0;">${escapeHtml(st.tactic)}</span>
     </div>
+    <div class="muted" style="font-size:0.8rem;margin-bottom:4px;">
+      所持金合計：<strong style="color:${overBudget ? "#f87171" : "#86efac"};">${escapeHtml(formatGold(check.totalPrice))}</strong> / ${escapeHtml(formatGold(BUDGET_LIMIT))}
+    </div>
     <div class="muted" style="font-size:0.78rem;margin-bottom:8px;">
-      レジェンド ${limitCheck.legendCount}/${RARITY_LIMITS.legendMax} ・ レア ${limitCheck.rareCount}/${RARITY_LIMITS.rareMax}
+      レジェンド ${check.legendCount}/${RARITY_LIMITS.legendMax} ・ レア ${check.rareCount}/${RARITY_LIMITS.rareMax}
     </div>
     <div class="equip-summary muted">
-      <div class="equip-row"><strong>胴体:</strong> ${escapeHtml(eq.core)}</div>
-      <div class="equip-row"><strong>頭部:</strong> ${escapeHtml(eq.head)}</div>
-      <div class="equip-row"><strong>右腕:</strong> ${escapeHtml(eq.rightArm)}</div>
-      <div class="equip-row"><strong>左腕:</strong> ${escapeHtml(eq.leftArm)}</div>
-      <div class="equip-row"><strong>脚部:</strong> ${escapeHtml(eq.leg)}</div>
-      <div class="equip-row"><strong>右手:</strong> ${escapeHtml(eq.rightWeapon)}</div>
-      <div class="equip-row"><strong>左手:</strong> ${escapeHtml(eq.leftWeapon)}</div>
+      <div class="equip-row"><strong>胴体:</strong> ${escapeHtml(formatPartLabelWithPrice(normalizedBuild.core))}</div>
+      <div class="equip-row"><strong>頭部:</strong> ${escapeHtml(formatPartLabelWithPrice(normalizedBuild.head))}</div>
+      <div class="equip-row"><strong>右腕:</strong> ${escapeHtml(formatPartLabelWithPrice(normalizedBuild.rightArm))}</div>
+      <div class="equip-row"><strong>左腕:</strong> ${escapeHtml(formatPartLabelWithPrice(normalizedBuild.leftArm))}</div>
+      <div class="equip-row"><strong>右脚:</strong> ${escapeHtml(formatPartLabelWithPrice(normalizedBuild.rightLeg))}</div>
+      <div class="equip-row"><strong>左脚:</strong> ${escapeHtml(formatPartLabelWithPrice(normalizedBuild.leftLeg))}</div>
+      <div class="equip-row"><strong>右手:</strong> ${escapeHtml(formatPartLabelWithPrice(normalizedBuild.rightWeapon))}</div>
+      <div class="equip-row"><strong>左手:</strong> ${escapeHtml(formatPartLabelWithPrice(normalizedBuild.leftWeapon))}</div>
     </div>
     <div class="stats-grid" style="grid-template-columns:repeat(3, minmax(0, 1fr));">
       <div class="stat-box"><div class="stat-label">胴体耐久</div><div class="stat-value">${st.hp}</div></div>
@@ -447,7 +474,7 @@ function formatLogLineHtml(line) {
     ? `<span class="log-sub" style="display:block;margin-top:2px;white-space:pre-line;">${escapeHtml(subText)}</span>`
     : "";
 
-  return `<div class="log-line${extraClass}" style="white:normal;line-height:1.55;">${escapeHtml(mainText)}${subHtml}</div>`;
+  return `<div class="log-line${extraClass}" style="white-space:normal;line-height:1.55;">${escapeHtml(mainText)}${subHtml}</div>`;
 }
 
 function renderBattleResult(result) {
@@ -530,8 +557,8 @@ function syncBuildSelectors() {
 
   const optionsHtml = state.builds
     .map((b) => {
-      const check = validateBuildRarityLimits(b, state.masterData);
-      const tag = check.ok ? "" : " [制限違反]";
+      const check = validateBuildConstraints(b, state.masterData);
+      const tag = check.ok ? ` [${formatGold(check.totalPrice)}]` : ` [${formatGold(check.totalPrice)} / 制限違反]`;
       return `<option value="${escapeHtml(b.id)}">${escapeHtml((b.name || "名称未設定ゴーレム") + tag)}</option>`;
     })
     .join("");
@@ -554,14 +581,14 @@ function syncBuildSelectors() {
 
 function validatePairForBattle(f1, f2) {
   if (!f1 || !f2) return false;
-  const check1 = validateBuildRarityLimits(f1, state.masterData);
-  const check2 = validateBuildRarityLimits(f2, state.masterData);
+  const check1 = validateBuildConstraints(f1, state.masterData);
+  const check2 = validateBuildConstraints(f2, state.masterData);
   if (!check1.ok || !check2.ok) {
     const msgs = [
       !check1.ok ? `機体1「${f1.name}」: ${check1.violations.join(" / ")}` : "",
       !check2.ok ? `機体2「${f2.name}」: ${check2.violations.join(" / ")}` : ""
     ].filter(Boolean);
-    showToast(msgs.join(" | ") || "レアリティ制限違反の機体は出撃できません。");
+    showToast(msgs.join(" | ") || "制限違反の機体は出撃できません。");
     updateBattleButtonsState();
     return false;
   }
@@ -632,10 +659,10 @@ function handleRandomBattle() {
   if (!state.masterOk || !state.masterData || state.builds.length === 0) return;
   setActiveBattleButton(els.randomBattleBtn);
   const legalBuilds = state.builds.filter(
-    (b) => validateBuildRarityLimits(b, state.masterData).ok
+    (b) => validateBuildConstraints(b, state.masterData).ok
   );
   if (legalBuilds.length < 2) {
-    showToast("出撃可能な機体（レジェンド1/レア2以内）が2機以上必要です。");
+    showToast(`出撃可能な機体（予算${formatGold(BUDGET_LIMIT)}以内・レア制限以内）が2機以上必要です。`);
     updateBattleButtonsState();
     return;
   }
@@ -652,10 +679,10 @@ function handleRandomBattle10() {
   if (!state.masterOk || !state.masterData || state.builds.length === 0) return;
   setActiveBattleButton(els.randomBattle10Btn);
   const legalBuilds = state.builds.filter(
-    (b) => validateBuildRarityLimits(b, state.masterData).ok
+    (b) => validateBuildConstraints(b, state.masterData).ok
   );
   if (legalBuilds.length < 2) {
-    showToast("出撃可能な機体（レジェンド1/レア2以内）が2機以上必要です。");
+    showToast(`出撃可能な機体（予算${formatGold(BUDGET_LIMIT)}以内・レア制限以内）が2機以上必要です。`);
     updateBattleButtonsState();
     return;
   }

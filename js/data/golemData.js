@@ -2,6 +2,8 @@
 export const SHEET_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vQoLKur7M97rGwULb2fnoi2y8B1wsS9hgowMFDYWX9lnIiuk2e3kC-wHOgDU8v9XX-Sec31XA9MCYX7/pub?gid=501531529&single=true&output=csv";
 
+export const BUDGET_LIMIT_GOLD = 1000;
+
 export const PART_CATEGORIES = {
   core: "胴体",
   head: "頭部",
@@ -103,6 +105,11 @@ const HEADER_ALIASES = {
   part_name: "name",
   slot: "slot",
   hp: "hp",
+  price: "price",
+  gold: "price",
+  cost_gold: "price",
+  価格: "price",
+  ゴールド: "price",
   baseCost: "baseCost",
   base_cost: "baseCost",
   cost: "baseCost",
@@ -133,11 +140,15 @@ function normalizeHeaderKey(rawHeader) {
   return HEADER_ALIASES[lower] || cleaned;
 }
 
-function toFiniteNumber(val, fallback = 0) {
+export function toFiniteNumber(val, fallback = 0) {
   if (val === null || val === undefined || String(val).trim() === "") {
     return fallback;
   }
-  const normalized = String(val).trim().replace(/[＋]/g, "+").replace(/[－−]/g, "-");
+  const normalized = String(val)
+    .trim()
+    .replace(/[＋]/g, "+")
+    .replace(/[－−]/g, "-")
+    .replace(/[,，gGゴールド円]/g, "");
   const num = Number(normalized);
   return Number.isFinite(num) ? num : fallback;
 }
@@ -237,6 +248,7 @@ function enrichPart(row) {
     rarity,
     name,
     slot,
+    price: Math.max(0, toFiniteNumber(row.price, 0)),
     hp: toFiniteNumber(row.hp, 0),
     baseCost: toFiniteNumber(row.baseCost, 0),
     maxMp: toFiniteNumber(row.maxMp, 0),
