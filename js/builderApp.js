@@ -179,6 +179,15 @@ const els = {
   savedList: document.getElementById("saved-list")
 };
 
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function getRarityClass(rarity) {
   const r = String(rarity || "").trim();
   if (r === "アンコモン") return "rarity-uncommon";
@@ -238,7 +247,7 @@ export function validateBuildRarityLimits(build = {}, masterData = state.masterD
     { key: "leftWeapon", id: build.leftWeapon, label: "左手装備" }
   ];
 
-  const countedMultiSlotKeys = new Set();
+  const countedMultiSlotIds = new Set();
 
   for (const entry of slotEntries) {
     if (!entry.id) continue;
@@ -252,11 +261,10 @@ export function validateBuildRarityLimits(build = {}, masterData = state.masterD
       isDualArmPart(part) || isDualLegPart(part) || isDualWeaponPart(part);
 
     if (isMultiSlot) {
-      const dedupKey = `${entry.id}:${part.slot || part.cat || ""}`;
-      if (countedMultiSlotKeys.has(dedupKey)) {
+      if (countedMultiSlotIds.has(entry.id)) {
         continue;
       }
-      countedMultiSlotKeys.add(dedupKey);
+      countedMultiSlotIds.add(entry.id);
     }
 
     const rarity = String(part.rarity || "コモン").trim();
@@ -301,6 +309,7 @@ function showRarityViolationAlert(violations = []) {
     }
   }
   if (warnEl) {
+    warnEl.hidden = false;
     warnEl.style.display = "block";
     warnEl.style.borderColor = "#f87171";
     warnEl.style.backgroundColor = "rgba(239, 68, 68, 0.12)";
@@ -314,11 +323,13 @@ function showRarityViolationAlert(violations = []) {
 
 function clearRarityViolationAlert() {
   if (els.rarityWarning) {
+    els.rarityWarning.hidden = true;
     els.rarityWarning.style.display = "none";
     els.rarityWarning.textContent = "";
   }
   const dyn = document.getElementById("dynamic-rarity-warning");
   if (dyn) {
+    dyn.hidden = true;
     dyn.style.display = "none";
     dyn.textContent = "";
   }
@@ -393,9 +404,11 @@ function renderStatus(statusInfo) {
   }
   if (els.masterError) {
     if (!statusInfo.ok) {
+      els.masterError.hidden = false;
       els.masterError.style.display = "block";
       els.masterError.textContent = statusInfo.message;
     } else {
+      els.masterError.hidden = true;
       els.masterError.style.display = "none";
       els.masterError.textContent = "";
     }
@@ -439,11 +452,19 @@ function renderList(container, items, selectedId, onPick, disabled = false) {
   if (!container) return;
   container.innerHTML = items
     .map((p) => {
-      const sel = p.id === selectedId ? "is-selected" : "";
+      const sel = p.id === selectedId ? " is-selected" : "";
       const rarityLabel = p.rarity || "コモン";
       const rarityClass = getRarityClass(rarityLabel);
       return `
-        <div class="part-card ${sel}" data-part-id="${p.id}" data-rarity="${escapeHtml(rarityLabel)}" aria-disabled="${disabled ? "true" : "false"}">
+        <div
+          class="part-card${sel}"
+          role="button"
+          tabindex="${disabled ? "-1" : "0"}"
+          data-part-id="${escapeHtml(p.id)}"
+          data-rarity="${escapeHtml(rarityLabel)}"
+          aria-pressed="${p.id === selectedId ? "true" : "false"}"
+          aria-disabled="${disabled ? "true" : "false"}"
+        >
           <div class="part-card-header">
             <span>${escapeHtml(p.name)}</span>
             <div class="part-badges">
@@ -461,10 +482,17 @@ function renderList(container, items, selectedId, onPick, disabled = false) {
   if (disabled) return;
 
   container.querySelectorAll("[data-part-id]").forEach((card) => {
-    card.addEventListener("click", () => {
+    const activate = () => {
       onPick(card.dataset.partId);
       normalizeDraftConstraints();
       renderAll();
+    };
+    card.addEventListener("click", activate);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        activate();
+      }
     });
   });
 }
@@ -476,9 +504,11 @@ function setBlockState(blockEl, hintEl, isDisabled, hintText = "") {
   if (hintEl) {
     if (isDisabled && hintText) {
       hintEl.textContent = hintText;
+      hintEl.hidden = false;
       hintEl.style.display = "block";
     } else {
       hintEl.textContent = "";
+      hintEl.hidden = true;
       hintEl.style.display = "none";
     }
   }
@@ -582,8 +612,8 @@ function renderSavedBuilds() {
             <div class="muted">${escapeHtml(tacticText)}</div>
           </div>
           <div class="saved-item-actions">
-            <button type="button" class="btn btn-secondary btn-sm" data-load-id="${b.id}" ${state.masterOk ? "" : "disabled"}>読込</button>
-            <button type="button" class="btn btn-danger btn-sm" data-del-id="${b.id}" ${state.masterOk ? "" : "disabled"}>削除</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-load-id="${escapeHtml(b.id)}" ${state.masterOk ? "" : "disabled"}>読込</button>
+            <button type="button" class="btn btn-danger btn-sm" data-del-id="${escapeHtml(b.id)}" ${state.masterOk ? "" : "disabled"}>削除</button>
           </div>
         </div>
       `;
@@ -615,14 +645,6 @@ function renderSavedBuilds() {
       showToast("削除しました");
     });
   });
-}
-
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
 
 function applyPresetById(presetId) {
@@ -750,6 +772,10 @@ function renderAll() {
   }
 
   normalizeDraftConstraints();
+
+  if (els.golemName && document.activeElement !== els.golemName) {
+    els.golemName.value = state.draft.name || "";
+  }
 
   const presets = getAvailablePresets();
   if (els.presetSelect) {

@@ -93,11 +93,60 @@ export const PRESET_BUILDS = [
   }
 ];
 
+const HEADER_ALIASES = {
+  id: "id",
+  part_id: "id",
+  cat: "cat",
+  category: "cat",
+  rarity: "rarity",
+  name: "name",
+  part_name: "name",
+  slot: "slot",
+  hp: "hp",
+  baseCost: "baseCost",
+  base_cost: "baseCost",
+  cost: "baseCost",
+  maxMp: "maxMp",
+  max_mp: "maxMp",
+  mpRegen: "mpRegen",
+  mp_regen: "mpRegen",
+  power: "power",
+  useCost: "useCost",
+  use_cost: "useCost",
+  mpCost: "useCost",
+  mp_cost: "useCost",
+  range: "range",
+  acc: "acc",
+  move: "move",
+  evade: "evade",
+  note: "note",
+  effect: "note",
+  description: "note"
+};
+
+function normalizeHeaderKey(rawHeader) {
+  const cleaned = String(rawHeader ?? "")
+    .replace(/^\uFEFF/, "")
+    .trim();
+  if (HEADER_ALIASES[cleaned]) return HEADER_ALIASES[cleaned];
+  const lower = cleaned.toLowerCase();
+  return HEADER_ALIASES[lower] || cleaned;
+}
+
+function toFiniteNumber(val, fallback = 0) {
+  if (val === null || val === undefined || String(val).trim() === "") {
+    return fallback;
+  }
+  const normalized = String(val).trim().replace(/[＋]/g, "+").replace(/[－−]/g, "-");
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : fallback;
+}
+
 function createEmptyMasterData() {
   return {
     parts: [],
     byId: {},
-    presets: []
+    presets: PRESET_BUILDS.map((p) => ({ ...p }))
   };
 }
 
@@ -106,14 +155,21 @@ function buildCsvUrl(url) {
   return `${url}${sep}t=${Date.now()}`;
 }
 
-function parseCsvLine(line) {
-  const cols = [];
+function parseCsvLines(csvText) {
+  const text = String(csvText ?? "")
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+
+  const rows = [];
+  let row = [];
   let cur = "";
   let inQuotes = false;
 
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    const next = line[i + 1];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+
     if (ch === '"') {
       if (inQuotes && next === '"') {
         cur += '"';
@@ -122,14 +178,28 @@ function parseCsvLine(line) {
         inQuotes = !inQuotes;
       }
     } else if (ch === "," && !inQuotes) {
-      cols.push(cur.trim());
+      row.push(cur.trim());
+      cur = "";
+    } else if (ch === "\n" && !inQuotes) {
+      row.push(cur.trim());
+      if (row.some((cell) => cell.length > 0)) {
+        rows.push(row);
+      }
+      row = [];
       cur = "";
     } else {
       cur += ch;
     }
   }
-  cols.push(cur.trim());
-  return cols;
+
+  if (cur.length > 0 || row.length > 0) {
+    row.push(cur.trim());
+    if (row.some((cell) => cell.length > 0)) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
 }
 
 export function parseRangeSpec(rangeVal) {
@@ -153,27 +223,33 @@ export function parseRangeSpec(rangeVal) {
 
 function enrichPart(row) {
   const rangeSpec = parseRangeSpec(row.range);
-  const text = `${row.slot || ""} ${row.cat || ""} ${row.name || ""} ${row.note || ""}`;
+  const id = String(row.id ?? "").trim();
+  const cat = String(row.cat ?? "").trim();
+  const rarity = String(row.rarity ?? "").trim() || "コモン";
+  const name = String(row.name ?? "").trim();
+  const slot = String(row.slot ?? "").trim();
+  const note = String(row.note ?? "").trim();
+  const text = `${slot} ${cat} ${name} ${note}`;
 
   return {
-    id: row.id,
-    cat: row.cat,
-    rarity: row.rarity || "コモン",
-    name: row.name,
-    slot: row.slot,
-    hp: Number(row.hp || 0),
-    baseCost: Number(row.baseCost || 0),
-    maxMp: Number(row.maxMp || 0),
-    mpRegen: Number(row.mpRegen || 0),
-    power: Number(row.power || 0),
-    useCost: Number(row.useCost || 0),
-    range: row.range || "-",
+    id,
+    cat,
+    rarity,
+    name,
+    slot,
+    hp: toFiniteNumber(row.hp, 0),
+    baseCost: toFiniteNumber(row.baseCost, 0),
+    maxMp: toFiniteNumber(row.maxMp, 0),
+    mpRegen: toFiniteNumber(row.mpRegen, 0),
+    power: toFiniteNumber(row.power, 0),
+    useCost: toFiniteNumber(row.useCost, 0),
+    range: rangeSpec.label,
     rangeMin: rangeSpec.min,
     rangeMax: rangeSpec.max,
-    acc: Number(row.acc || 0),
-    move: Number(row.move || 0),
-    evade: Number(row.evade || 0),
-    note: row.note || "",
+    acc: toFiniteNumber(row.acc, 0),
+    move: toFiniteNumber(row.move, 0),
+    evade: toFiniteNumber(row.evade, 0),
+    note,
     isDualArm: text.includes("両腕"),
     isDualWeapon: text.includes("両手") || text.includes("両腕"),
     isDualLeg:
@@ -184,28 +260,21 @@ function enrichPart(row) {
       text.includes("ホバー"),
     isIntegratedWeapon:
       text.includes("武器一体") || text.includes("一体型") || text.includes("武器内蔵"),
-    isShield: String(row.cat || "").includes("盾") || text.includes("シールド")
+    isShield: cat.includes("盾") || text.includes("シールド")
   };
 }
 
 export function parsePartsCsv(csvText) {
-  const lines = csvText
-    .replace(/^\uFEFF/, "")
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+  const rows = parseCsvLines(csvText);
+  if (rows.length < 2) return [];
 
-  if (lines.length < 2) return [];
-
-  const headers = parseCsvLine(lines[0]);
-  return lines
+  const headers = rows[0].map(normalizeHeaderKey);
+  return rows
     .slice(1)
-    .map((line) => {
-      const cols = parseCsvLine(line);
+    .map((cols) => {
       const row = {};
       headers.forEach((h, i) => {
-        row[h] = cols[i] ?? "";
+        if (h) row[h] = cols[i] ?? "";
       });
       return row;
     })
@@ -242,25 +311,28 @@ export async function loadGolemMasterData() {
 
     const csvText = await res.text();
     const parts = parsePartsCsv(csvText);
-    if (parts.length === 0) throw new Error("有効なパーツ行が見つかりませんでした");
+    if (parts.length === 0) {
+      throw new Error("有効なパーツ行が見つかりませんでした");
+    }
 
     const byId = Object.fromEntries(parts.map((p) => [p.id, p]));
     return {
       data: {
         parts,
         byId,
-        presets: PRESET_BUILDS
+        presets: PRESET_BUILDS.map((p) => ({ ...p }))
       },
       source: "sheet",
       ok: true,
       message: `「ジェネリックハート_パーツマスター_Ver1.1」読込完了（${parts.length}件）`
     };
   } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
     return {
       data: empty,
       source: "error",
       ok: false,
-      message: `エラー：「ジェネリックハート_パーツマスター_Ver1.1」を読み込めませんでした（${err.message}）。スプレッドシート読込が必要なためプレイできません。`
+      message: `エラー：「ジェネリックハート_パーツマスター_Ver1.1」を読み込めませんでした（${detail}）。スプレッドシート読込が必要なためプレイできません。`
     };
   }
 }

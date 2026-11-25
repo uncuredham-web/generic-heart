@@ -12,18 +12,21 @@
       margin: 0 auto;
       padding: 24px 20px 96px;
     }
+
     .arena-3col {
       display: grid;
       grid-template-columns: minmax(290px, 340px) minmax(0, 1fr) minmax(290px, 340px);
       gap: 20px;
       align-items: start;
     }
+
     .sticky-side {
       position: -webkit-sticky;
       position: sticky;
       top: 76px;
       align-self: start;
     }
+
     .fighter-side-card {
       background: var(--bg-panel);
       border: 1px solid var(--border-subtle);
@@ -31,6 +34,11 @@
       padding: 18px;
       box-shadow: var(--shadow-card);
     }
+
+    .fighter-select-group {
+      margin-bottom: 14px;
+    }
+
     .equip-summary {
       margin: 10px 0 12px;
       padding: 10px 12px;
@@ -40,12 +48,27 @@
       font-size: 0.84rem;
       line-height: 1.65;
     }
+
     .equip-row {
       margin-bottom: 4px;
     }
+
     .equip-row:last-child {
       margin-bottom: 0;
     }
+
+    .status-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .master-error-panel {
+      border-color: var(--danger);
+      color: #fca5a5;
+      margin-bottom: 20px;
+    }
+
     .center-controls {
       display: flex;
       flex-wrap: wrap;
@@ -54,6 +77,7 @@
       gap: 12px;
       margin-bottom: 14px;
     }
+
     .battle-banner {
       margin-bottom: 14px;
       padding: 12px 16px;
@@ -64,6 +88,7 @@
       border: 1px solid rgba(34, 197, 94, 0.45);
       color: #bbf7d0;
     }
+
     /* arena.css の max-height / overflow-y を上書きしてページ全体スクロールにする */
     .arena-3col .battle-log {
       padding: 18px 20px;
@@ -71,23 +96,26 @@
       background: rgba(15, 23, 42, 0.72);
       border: 1px solid rgba(148, 163, 184, 0.22);
       min-height: 280px;
-      max-height: none !important;
-      overflow-y: visible !important;
+      max-height: none;
+      overflow-y: visible;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 0.88rem;
       line-height: 1.65;
       white-space: normal;
       word-break: break-word;
     }
+
     .log-line {
       padding: 7px 0;
       border-bottom: 1px dashed rgba(148, 163, 184, 0.12);
     }
+
     .log-line.is-header {
       font-weight: 700;
       color: #e2e8f0;
       padding-bottom: 10px;
     }
+
     .log-line.is-turn-divider {
       margin-top: 16px;
       margin-bottom: 4px;
@@ -98,6 +126,7 @@
       background: rgba(56, 189, 248, 0.08);
       border: 1px solid rgba(56, 189, 248, 0.22);
     }
+
     .log-line.is-result {
       margin-top: 14px;
       padding: 10px 12px;
@@ -107,6 +136,7 @@
       background: rgba(34, 197, 94, 0.12);
       border: 1px solid rgba(34, 197, 94, 0.35);
     }
+
     .log-sub {
       display: block;
       margin-top: 2px;
@@ -114,13 +144,16 @@
       font-size: 0.82rem;
       color: #94a3b8;
     }
+
     .log-line:last-child {
       border-bottom: none;
     }
+
     @media (max-width: 1120px) {
       .arena-3col {
         grid-template-columns: 1fr;
       }
+
       .sticky-side {
         position: static;
       }
@@ -131,16 +164,15 @@
   <header class="site-header">
     <div class="header-inner">
       <div class="brand-area">
-        <div>
-          <h1 class="brand-title">ゴーレムアリーナ</h1>
-          <p class="brand-subtitle">1on1オートバトル</p>
-        </div>
+        <h1 class="brand-title">ゴーレムアリーナ</h1>
+        <p class="brand-subtitle">1on1オートバトル</p>
       </div>
       <nav class="nav-links" aria-label="画面切り替え">
         <a class="nav-link" href="./index.html">ポータル</a>
-        <a class="nav-link" href="./rule.html">ルールガイド</a>
         <a class="nav-link" href="./builder.html">ゴーレムビルダー</a>
-        <a class="nav-link is-active" href="./arena.html">ゴーレムアリーナ</a>
+        <a class="nav-link is-active" href="./arena.html" aria-current="page">ゴーレムアリーナ</a>
+        <a class="nav-link" href="./rule.html">ルールガイド</a>
+        <a class="nav-link" href="./parts.html">パーツ一覧</a>
       </nav>
     </div>
   </header>
@@ -150,7 +182,7 @@
       <div>
         <span id="data-status" class="status-badge is-fallback">「ジェネリックハート_パーツマスター_Ver1.1」読込待機中...</span>
       </div>
-      <div style="display:flex;gap:8px;">
+      <div class="status-actions">
         <a href="./builder.html" class="btn btn-secondary btn-sm">+ 新しい機体を作る</a>
         <button id="reload-data-btn" type="button" class="btn btn-secondary btn-sm">
           マスターデータ再読込
@@ -158,12 +190,12 @@
       </div>
     </div>
 
-    <div id="master-error" class="panel" style="display:none; border-color:var(--danger); color:#fca5a5; margin-bottom:20px;" role="alert"></div>
+    <div id="master-error" class="panel master-error-panel" hidden role="alert"></div>
 
     <div class="arena-3col">
       <aside class="fighter-side-card sticky-side">
         <h2 class="panel-title">機体1</h2>
-        <div style="margin-bottom:14px;">
+        <div class="fighter-select-group">
           <label for="fighter1-select">機体選択</label>
           <select id="fighter1-select"></select>
         </div>
@@ -176,8 +208,9 @@
           <button id="start-battle-btn" type="button" class="btn btn-primary">バトル開始</button>
           <button id="start-battle-10-btn" type="button" class="btn btn-secondary">バトル開始×10</button>
           <button id="random-battle-btn" type="button" class="btn btn-secondary">ランダム対戦</button>
-          <button id="random-battle-10-btn" type="button" class="btn btn-secondary">ランダム対戦×10</button>        </div>
-        <div id="battle-banner" class="battle-banner" style="display:none;"></div>
+          <button id="random-battle-10-btn" type="button" class="btn btn-secondary">ランダム対戦×10</button>
+        </div>
+        <div id="battle-banner" class="battle-banner" hidden></div>
         <div id="battle-log" class="battle-log">
           <span class="muted">左右で対戦するゴーレムを選択し、「バトル開始」を押してください。</span>
         </div>
@@ -185,7 +218,7 @@
 
       <aside class="fighter-side-card sticky-side">
         <h2 class="panel-title">機体2</h2>
-        <div style="margin-bottom:14px;">
+        <div class="fighter-select-group">
           <label for="fighter2-select">機体選択</label>
           <select id="fighter2-select"></select>
         </div>

@@ -6,23 +6,43 @@
   <title>GENERIC HEART | ゴーレムビルダー＆アリーナ</title>
   <link rel="stylesheet" href="./css/common.css" />
   <link rel="stylesheet" href="./css/index.css" />
+  <style>
+    .card-lead {
+      margin: 0;
+    }
+
+    .card-action {
+      width: 100%;
+    }
+
+    .portal-footer-note {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .sub-nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
       <div class="brand-area">
-        <div>
-          <h1 class="brand-title">GENERIC HEART</h1>
-          <p class="brand-subtitle">ゴーレムビルダー＆ゴーレムアリーナ ポータル</p>
-        </div>
+        <h1 class="brand-title">GENERIC HEART</h1>
+        <p class="brand-subtitle">ゴーレムビルダー＆ゴーレムアリーナ ポータル</p>
       </div>
-        <nav class="nav-links" aria-label="画面切り替え">
-        <a class="nav-link" href="./index.html">ポータル</a>
+      <nav class="nav-links" aria-label="画面切り替え">
+        <a class="nav-link is-active" href="./index.html" aria-current="page">ポータル</a>
         <a class="nav-link" href="./builder.html">ゴーレムビルダー</a>
         <a class="nav-link" href="./arena.html">ゴーレムアリーナ</a>
         <a class="nav-link" href="./rule.html">ルールガイド</a>
         <a class="nav-link" href="./parts.html">パーツ一覧</a>
-        </nav>
+      </nav>
     </div>
   </header>
 
@@ -33,6 +53,10 @@
       <p class="hero-desc">
         「ジェネリックハート_パーツマスター_Ver1.1」をもとに機体を設計し、「ゴーレムアリーナ」で1on1オートバトルの挙動やバランス、10連戦の勝率などを検証できます。
       </p>
+      <div class="sub-nav-links">
+        <a href="./rule.html" class="btn btn-secondary btn-sm">ルールガイドを見る</a>
+        <a href="./parts.html" class="btn btn-secondary btn-sm">パーツ一覧を見る</a>
+      </div>
     </section>
 
     <section class="portal-grid" aria-label="メイン機能">
@@ -42,7 +66,7 @@
             <h3 class="portal-card-title">ゴーレムビルダー</h3>
             <span class="tag">DESIGN &amp; SAVE</span>
           </div>
-          <p class="muted" style="margin:0;">
+          <p class="muted card-lead">
             3カラム構成で保存機体・JSON取込、中央のパーツ選択、右側の追従プレビューを確認しながら機体を組み立てられます。
           </p>
           <ul class="portal-features">
@@ -52,7 +76,7 @@
           </ul>
         </div>
         <div>
-          <a href="./builder.html" class="btn btn-primary" style="width:100%;">ゴーレムビルダーを開く →</a>
+          <a href="./builder.html" class="btn btn-primary card-action">ゴーレムビルダーを開く →</a>
         </div>
       </article>
 
@@ -62,7 +86,7 @@
             <h3 class="portal-card-title">ゴーレムアリーナ</h3>
             <span class="tag">1ON1 AUTO BATTLE</span>
           </div>
-          <p class="muted" style="margin:0;">
+          <p class="muted card-lead">
             プリセットや保存済み機体を選んで1on1オートバトルを実行し、詳細ログや10連戦の勝敗集計を確認できます。
           </p>
           <ul class="portal-features">
@@ -72,7 +96,7 @@
           </ul>
         </div>
         <div>
-          <a href="./arena.html" class="btn btn-arena" style="width:100%;">ゴーレムアリーナを開く →</a>
+          <a href="./arena.html" class="btn btn-arena card-action">ゴーレムアリーナを開く →</a>
         </div>
       </article>
     </section>
@@ -92,32 +116,38 @@
 
       <div class="panel">
         <h3 class="panel-title">モジュール一覧</h3>
-        <table class="module-table">
-          <thead>
-            <tr>
-              <th>対象</th>
-              <th>ファイル</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>共通／画面別CSS</td>
-              <td><code>css/common.css</code>, <code>css/index.css</code>, <code>css/builder.css</code>, <code>css/arena.css</code></td>
-            </tr>
-            <tr>
-              <td>マスター／プリセット</td>
-              <td><code>js/data/golemData.js</code></td>
-            </tr>
-            <tr>
-              <td>バトルルール</td>
-              <td><code>js/rules/battleRules.js</code></td>
-            </tr>
-            <tr>
-              <td>保存／画面制御</td>
-              <td><code>js/ui/storage.js</code>, <code>js/builderApp.js</code>, <code>js/arenaApp_2.js</code></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="module-table-wrap">
+          <table class="module-table">
+            <thead>
+              <tr>
+                <th>対象</th>
+                <th>ファイル</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>共通／画面別CSS</td>
+                <td><code>css/common.css</code>, <code>css/index.css</code>, <code>css/builder.css</code>, <code>css/arena.css</code></td>
+              </tr>
+              <tr>
+                <td>ガイド／一覧画面</td>
+                <td><code>rule.html</code>, <code>parts.html</code></td>
+              </tr>
+              <tr>
+                <td>マスター／プリセット</td>
+                <td><code>js/data/golemData.js</code></td>
+              </tr>
+              <tr>
+                <td>バトルルール</td>
+                <td><code>js/rules/battleRules.js</code></td>
+              </tr>
+              <tr>
+                <td>保存／画面制御</td>
+                <td><code>js/ui/storage.js</code>, <code>js/builderApp.js</code>, <code>js/arenaApp.js</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>

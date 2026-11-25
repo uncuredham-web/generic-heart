@@ -9,12 +9,15 @@
     .filter-panel {
       margin-bottom: 20px;
     }
+
     .filter-group {
       margin-bottom: 14px;
     }
+
     .filter-group:last-child {
       margin-bottom: 0;
     }
+
     .filter-label {
       display: block;
       font-size: 0.8rem;
@@ -22,11 +25,13 @@
       color: var(--text-muted);
       margin-bottom: 8px;
     }
+
     .chip-row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
     }
+
     .filter-chip {
       padding: 6px 12px;
       border-radius: 999px;
@@ -36,16 +41,19 @@
       font-size: 0.82rem;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
+
     .filter-chip:hover {
       border-color: var(--accent-primary);
     }
+
     .filter-chip.is-active {
       background: var(--accent-primary);
       color: #082f49;
       border-color: var(--accent-primary);
     }
+
     .filter-toolbar {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -53,11 +61,13 @@
       align-items: end;
       margin-top: 14px;
     }
+
     @media (max-width: 640px) {
       .filter-toolbar {
         grid-template-columns: 1fr;
       }
     }
+
     .result-meta {
       display: flex;
       flex-wrap: wrap;
@@ -68,11 +78,13 @@
       font-size: 0.88rem;
       color: var(--text-muted);
     }
+
     .parts-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
       gap: 14px;
     }
+
     .part-catalog-card {
       background: var(--bg-panel);
       border: 1px solid var(--border-subtle);
@@ -83,23 +95,28 @@
       flex-direction: column;
       justify-content: space-between;
       gap: 10px;
+      min-width: 0;
     }
+
     .part-top {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       gap: 8px;
     }
+
     .part-id {
       font-family: var(--font-mono);
       font-size: 0.75rem;
       color: var(--text-muted);
     }
+
     .part-title {
       margin: 2px 0 0;
       font-size: 1.05rem;
       font-weight: 800;
     }
+
     .rarity-badge {
       display: inline-block;
       padding: 2px 9px;
@@ -107,45 +124,55 @@
       font-size: 0.74rem;
       font-weight: 800;
       white-space: nowrap;
+      flex-shrink: 0;
     }
+
     .rarity-legend {
       background: rgba(245, 158, 11, 0.18);
       color: #fcd34d;
       border: 1px solid rgba(245, 158, 11, 0.45);
     }
+
     .rarity-rare {
       background: rgba(168, 85, 247, 0.18);
       color: #e9d5ff;
       border: 1px solid rgba(168, 85, 247, 0.45);
     }
+
     .rarity-uncommon {
       background: rgba(34, 197, 94, 0.16);
       color: #86efac;
       border: 1px solid rgba(34, 197, 94, 0.4);
     }
+
     .rarity-common {
       background: rgba(148, 163, 184, 0.16);
       color: #cbd5e1;
       border: 1px solid rgba(148, 163, 184, 0.35);
     }
+
     .part-meta-line {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
+      margin-top: 8px;
       font-size: 0.78rem;
       color: var(--text-muted);
     }
+
     .part-meta-pill {
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: 6px;
       padding: 2px 8px;
     }
+
     .part-note {
-      margin: 0;
+      margin: 10px 0 0;
       font-size: 0.88rem;
       color: #e2e8f0;
     }
+
     .part-specs {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -156,31 +183,41 @@
       padding: 10px;
       font-size: 0.8rem;
     }
+
     .spec-item {
       display: flex;
       justify-content: space-between;
       gap: 6px;
     }
-    .spec-k { color: var(--text-muted); }
-    .spec-v { font-weight: 700; color: var(--text-main); }
+
+    .spec-k {
+      color: var(--text-muted);
+    }
+
+    .spec-v {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .empty-note {
+      margin: 0;
+    }
   </style>
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
       <div class="brand-area">
-        <div>
-          <h1 class="brand-title">GENERIC HEART</h1>
-          <p class="brand-subtitle">パーツマスター一覧＆フィルタ検索（Ver1.1）</p>
-        </div>
+        <h1 class="brand-title">GENERIC HEART</h1>
+        <p class="brand-subtitle">パーツマスター一覧＆フィルタ検索（Ver1.1）</p>
       </div>
-        <nav class="nav-links" aria-label="画面切り替え">
+      <nav class="nav-links" aria-label="画面切り替え">
         <a class="nav-link" href="./index.html">ポータル</a>
         <a class="nav-link" href="./builder.html">ゴーレムビルダー</a>
         <a class="nav-link" href="./arena.html">ゴーレムアリーナ</a>
         <a class="nav-link" href="./rule.html">ルールガイド</a>
-        <a class="nav-link" href="./parts.html">パーツ一覧</a>
-        </nav>
+        <a class="nav-link is-active" href="./parts.html" aria-current="page">パーツ一覧</a>
+      </nav>
     </div>
   </header>
 
@@ -209,7 +246,7 @@
       <div class="filter-toolbar">
         <div>
           <label for="search-input">キーワード検索（名前・ID・効果・備考）</label>
-          <input id="search-input" type="text" placeholder="例：レジェンド、命中、魔力、両腕占有、メギド" />
+          <input id="search-input" type="search" placeholder="例：レジェンド、命中、魔力、両腕占有、メギド" />
         </div>
         <button id="reset-filter-btn" type="button" class="btn btn-secondary">フィルタ解除</button>
       </div>
@@ -307,14 +344,16 @@
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;");
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
     }
 
     function renderChips(container, items, currentVal, onSelect) {
       container.innerHTML = items
         .map((item) => {
-          const active = item === currentVal ? " is-active" : "";
-          return `<button type="button" class="filter-chip${active}" data-val="${escapeHtml(item)}">${escapeHtml(item)}</button>`;
+          const active = item === currentVal;
+          const activeClass = active ? " is-active" : "";
+          return `<button type="button" class="filter-chip${activeClass}" aria-pressed="${active}" data-val="${escapeHtml(item)}">${escapeHtml(item)}</button>`;
         })
         .join("");
 
@@ -342,7 +381,7 @@
       countEl.textContent = `表示中：${filtered.length}件 / 全${PARTS_DATA.length}件`;
 
       if (filtered.length === 0) {
-        gridEl.innerHTML = `<div class="panel"><p class="muted" style="margin:0;">条件に一致するパーツはありません。</p></div>`;
+        gridEl.innerHTML = `<div class="panel"><p class="muted empty-note">条件に一致するパーツはありません。</p></div>`;
         return;
       }
 
@@ -361,13 +400,13 @@
                   </div>
                   <span class="rarity-badge ${rarityClass(p.rarity)}">${escapeHtml(p.rarity)}</span>
                 </div>
-                <div class="part-meta-line" style="margin-top:8px;">
+                <div class="part-meta-line">
                   <span class="part-meta-pill">${escapeHtml(p.cat)}</span>
                   <span class="part-meta-pill">${escapeHtml(p.slot)}</span>
                   <span class="part-meta-pill">コスト ${escapeHtml(p.baseCost)}</span>
                   <span class="part-meta-pill">射程 ${escapeHtml(p.range)}</span>
                 </div>
-                <p class="part-note" style="margin-top:10px;">${escapeHtml(p.note)}</p>
+                <p class="part-note">${escapeHtml(p.note)}</p>
               </div>
               <div class="part-specs">
                 <div class="spec-item"><span class="spec-k">耐久/HP</span><span class="spec-v">${p.hp}</span></div>

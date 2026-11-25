@@ -47,6 +47,15 @@ export const TACTICS = {
   ALL_OUT_SWEEP: "全力で薙ぎ払え"
 };
 
+function toFiniteNumber(val, fallback = 0) {
+  if (val === null || val === undefined || String(val).trim() === "") {
+    return fallback;
+  }
+  const normalized = String(val).trim().replace(/[＋]/g, "+").replace(/[－−]/g, "-");
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : fallback;
+}
+
 function normalizeTactic(tactic) {
   const legacyMap = {
     "ガンガン近づけ": TACTICS.SURE_PUSH,
@@ -96,7 +105,11 @@ function isShieldPart(part) {
 function isMagicWeapon(part) {
   if (!part) return false;
   const t = partText(part);
-  return String(part.cat || "").includes("魔力") || t.includes("魔力") || (Number(part.useCost) || 0) > 0;
+  return (
+    String(part.cat || "").includes("魔力") ||
+    t.includes("魔力") ||
+    toFiniteNumber(part.useCost ?? part.mpCost ?? part.cost, 0) > 0
+  );
 }
 
 function hasMoveAttackPenetration(fighter) {
@@ -119,12 +132,12 @@ function hasSeraphimBonus(fighter) {
 
 function getWeaponPower(part) {
   if (!part) return 0;
-  return Number(part.power ?? part.atk ?? part.attack ?? 0) || 0;
+  return toFiniteNumber(part.power ?? part.atk ?? part.attack, 0);
 }
 
 function getWeaponCost(part) {
   if (!part) return 0;
-  return Number(part.useCost ?? part.mpCost ?? part.cost ?? 0) || 0;
+  return Math.max(0, toFiniteNumber(part.useCost ?? part.mpCost ?? part.cost, 0));
 }
 
 function parseRange(rangeVal) {
@@ -157,16 +170,16 @@ function isInRange(weapon, distance) {
 
 function getWeaponAcc(part) {
   if (!part) return 0;
-  return Number(part.acc ?? part.accuracy ?? 0) || 0;
+  return toFiniteNumber(part.acc ?? part.accuracy, 0);
 }
 
 function getPartEvade(part) {
   if (!part) return 0;
-  return Number(part.evade ?? part.eva ?? 0) || 0;
+  return toFiniteNumber(part.evade ?? part.eva, 0);
 }
 
 function createPartState(part, fallbackName, fallbackHp, baseMove = 0, partKey = "") {
-  const hp = Math.max(1, Number(part?.hp) || fallbackHp);
+  const hp = Math.max(1, toFiniteNumber(part?.hp, fallbackHp));
   return {
     key: partKey,
     id: part?.id || null,
@@ -176,8 +189,8 @@ function createPartState(part, fallbackName, fallbackHp, baseMove = 0, partKey =
     note: part?.note || "",
     hp,
     maxHp: hp,
-    move: Number(part?.move) || baseMove,
-    acc: Number(part?.acc) || 0,
+    move: toFiniteNumber(part?.move, baseMove),
+    acc: toFiniteNumber(part?.acc, 0),
     evade: getPartEvade(part),
     broken: false
   };
@@ -196,13 +209,13 @@ export function calcTotalPartsHp(fighter) {
       if (seenLinked.has(p.linkedTo)) continue;
       seenLinked.add(p.linkedTo);
     }
-    currentTotal += Math.max(0, Number(p.hp) || 0);
-    maxTotal += Math.max(0, Number(p.maxHp) || 0);
+    currentTotal += Math.max(0, toFiniteNumber(p.hp, 0));
+    maxTotal += Math.max(0, toFiniteNumber(p.maxHp, 0));
   }
 
   for (const s of fighter.shields || []) {
-    currentTotal += Math.max(0, Number(s.hp) || 0);
-    maxTotal += Math.max(0, Number(s.maxHp) || 0);
+    currentTotal += Math.max(0, toFiniteNumber(s.hp, 0));
+    maxTotal += Math.max(0, toFiniteNumber(s.maxHp, 0));
   }
 
   return { currentTotal, maxTotal };
@@ -230,10 +243,12 @@ export function calcFighterStats(build = {}, masterData = {}) {
   activeParts.push(rLegPart);
   if (!isDualLeg && build.leftLeg && lLegPart) activeParts.push(lLegPart);
   if (rWeapPart) activeParts.push(rWeapPart);
-  if (!isDualWeapon && lWeapPart) activeParts.push(lWeapPart);
+  if (!isDualWeapon && lWeapPart && (!rWeapPart || lWeapPart.id !== rWeapPart.id)) {
+    activeParts.push(lWeapPart);
+  }
 
-  const baseCost = activeParts.reduce((sum, p) => sum + (Number(p?.baseCost) || 0), 0);
-  const mpRegen = (Number(corePart.mpRegen) || 0) - baseCost;
+  const baseCost = activeParts.reduce((sum, p) => sum + toFiniteNumber(p?.baseCost, 0), 0);
+  const mpRegen = toFiniteNumber(corePart.mpRegen, 0) - baseCost;
 
   const parts = {
     core: createPartState(corePart, "核", 300, 0, "core"),
@@ -250,21 +265,23 @@ export function calcFighterStats(build = {}, masterData = {}) {
 
   const shields = [];
   if (rWeapPart && isShieldPart(rWeapPart)) {
+    const shieldHp = Math.max(1, toFiniteNumber(rWeapPart.hp, 120));
     shields.push({
       ...rWeapPart,
       hand: isDualWeapon ? "両手" : "右手",
-      hp: Math.max(1, Number(rWeapPart.hp) || 120),
-      maxHp: Math.max(1, Number(rWeapPart.hp) || 120),
+      hp: shieldHp,
+      maxHp: shieldHp,
       evade: getPartEvade(rWeapPart),
       broken: false
     });
   }
   if (!isDualWeapon && lWeapPart && isShieldPart(lWeapPart)) {
+    const shieldHp = Math.max(1, toFiniteNumber(lWeapPart.hp, 120));
     shields.push({
       ...lWeapPart,
       hand: "左手",
-      hp: Math.max(1, Number(lWeapPart.hp) || 120),
-      maxHp: Math.max(1, Number(lWeapPart.hp) || 120),
+      hp: shieldHp,
+      maxHp: shieldHp,
       evade: getPartEvade(lWeapPart),
       broken: false
     });
@@ -323,7 +340,7 @@ export function calcFighterStats(build = {}, masterData = {}) {
   const isDualWield = !isDualWeapon && handWeapons.length >= 2;
   const tactic = normalizeTactic(build.tactic);
   const maxHp = parts.core.maxHp;
-  const maxMp = Math.max(0, Number(corePart.maxMp) || 100);
+  const maxMp = Math.max(0, toFiniteNumber(corePart.maxMp, 100));
 
   const fighter = {
     name: build.name || "名称未設定ゴーレム",
@@ -367,13 +384,13 @@ export function calcFighterStats(build = {}, masterData = {}) {
 export function calcCurrentMove(fighter) {
   const rLeg = fighter.parts.rightLeg;
   const lLeg = fighter.parts.leftLeg;
-  const rMove = rLeg && !rLeg.broken ? Math.max(0, Number(rLeg.move) || 0) : 0;
+  const rMove = rLeg && !rLeg.broken ? Math.max(0, toFiniteNumber(rLeg.move, 0)) : 0;
 
   if (fighter.isDualLeg) {
     return rMove;
   }
 
-  const lMove = lLeg && !lLeg.broken ? Math.max(0, Number(lLeg.move) || 0) : 0;
+  const lMove = lLeg && !lLeg.broken ? Math.max(0, toFiniteNumber(lLeg.move, 0)) : 0;
   return rMove + lMove;
 }
 
@@ -467,11 +484,11 @@ function getAvailableWeapons(fighter, mpLimit = fighter.mp) {
   return usableBuiltin.filter((w) => getWeaponCost(w) <= mpLimit);
 }
 
-// 案1：現時点で使える武器がなく、かつ毎ターンMP回復が0以下（回復待ちで使えるようになる見込みがない）なら降伏対象
+// 現時点で使える武器がなく、かつ毎ターンMP回復が0以下（回復待ちで使えるようになる見込みがない）なら降伏対象
 function shouldSurrenderNow(fighter) {
   const hasUsableNow = getAvailableWeapons(fighter, fighter.mp).length > 0;
   if (hasUsableNow) return false;
-  return Number(fighter.mpRegen || 0) <= 0;
+  return toFiniteNumber(fighter.mpRegen, 0) <= 0;
 }
 
 function pickWeaponsForAction(fighter, distanceAfterMove, actionType, tactic) {
@@ -692,14 +709,13 @@ function calcDefenderEvade(defender, evaMod) {
     return 0;
   }
 
-  const effectiveEvaMod = evaMod > 0 ? evaMod : evaMod;
   const totalEvade =
     BATTLE_CONFIG.baseEvadeRate +
     legEvade +
     shieldEvade +
     headOrArmEvade +
     (hasFloatBonus(defender) ? BATTLE_CONFIG.floatEvadeMod : 0) +
-    effectiveEvaMod;
+    evaMod;
 
   return Math.max(BATTLE_CONFIG.minEvadeRate, Math.min(BATTLE_CONFIG.maxEvadeRate, totalEvade));
 }
@@ -829,7 +845,7 @@ function executePlanAttacks(plan, defender, distanceAfterMove, logs) {
     const handPrefix = weapon.hand ? `[${weapon.hand}] ` : "";
     const dualTag = actor.isDualWield ? "・二刀流補正" : "";
 
-    if (roll > hitChance) {
+    if (hitChance <= 0 || roll >= hitChance) {
       logs.push(
         `・${actor.name} の${handPrefix}「${weapon.name}」は外れた\n（命中:${hitChance}%${dualTag} / 消費MP:${cost} / 残MP:${actor.mp}）`
       );
@@ -881,7 +897,7 @@ export function runAutoBattle(build1, build2, masterData) {
       f.mp = Math.max(0, Math.min(f.maxMp, f.mp + f.mpRegen));
     }
 
-    // 案1：現在使える攻撃手段がなく、かつ毎ターンMP回復が0以下なら降伏
+    // 現在使える攻撃手段がなく、かつ毎ターンMP回復が0以下なら降伏
     const noAttack1 = shouldSurrenderNow(f1);
     const noAttack2 = shouldSurrenderNow(f2);
     if (noAttack1 || noAttack2) {

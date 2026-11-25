@@ -136,75 +136,6 @@ function getDefaultBuilds() {
   }));
 }
 
-/**
- * ビルド内のレジェンド／レア個数を集計し、制限違反をチェックする
- * 両腕・両脚・両手占有パーツはパーツ単位で1カウントとする
- */
-export function validateBuildRarityLimits(build = {}, masterData = state.masterData) {
-  const byId = masterData?.byId || {};
-  const violations = [];
-  let legendCount = 0;
-  let rareCount = 0;
-
-  const slotEntries = [
-    { key: "core", id: build.core, label: "胴体" },
-    { key: "head", id: build.head, label: "頭部" },
-    { key: "rightArm", id: build.rightArm, label: "右腕" },
-    { key: "leftArm", id: build.leftArm, label: "左腕" },
-    { key: "rightLeg", id: build.rightLeg, label: "右脚" },
-    { key: "leftLeg", id: build.leftLeg, label: "左脚" },
-    { key: "rightWeapon", id: build.rightWeapon, label: "右手装備" },
-    { key: "leftWeapon", id: build.leftWeapon, label: "左手装備" }
-  ];
-
-  const countedMultiSlotKeys = new Set();
-
-  for (const entry of slotEntries) {
-    if (!entry.id) continue;
-    const part = byId[entry.id];
-    if (!part) {
-      violations.push(`不明なパーツID（${entry.label}: ${entry.id}）が含まれています。`);
-      continue;
-    }
-
-    const isMultiSlot =
-      isDualArmPart(part) || isDualLegPart(part) || isDualWeaponPart(part);
-
-    if (isMultiSlot) {
-      const dedupKey = `${entry.id}:${part.slot || part.cat || ""}`;
-      if (countedMultiSlotKeys.has(dedupKey)) {
-        continue;
-      }
-      countedMultiSlotKeys.add(dedupKey);
-    }
-
-    const rarity = String(part.rarity || "コモン").trim();
-    if (rarity === "レジェンド") {
-      legendCount += 1;
-    } else if (rarity === "レア") {
-      rareCount += 1;
-    }
-  }
-
-  if (legendCount > RARITY_LIMITS.legendMax) {
-    violations.push(
-      `レジェンドパーツは${RARITY_LIMITS.legendMax}個までです（現在: ${legendCount}個）。`
-    );
-  }
-  if (rareCount > RARITY_LIMITS.rareMax) {
-    violations.push(
-      `レアパーツは${RARITY_LIMITS.rareMax}個までです（現在: ${rareCount}個）。`
-    );
-  }
-
-  return {
-    ok: violations.length === 0,
-    legendCount,
-    rareCount,
-    violations
-  };
-}
-
 const state = {
   masterData: null,
   masterOk: false,
@@ -237,20 +168,89 @@ const BATTLE_BUTTONS = [
   els.randomBattle10Btn
 ].filter(Boolean);
 
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+/**
+ * ビルド内のレジェンド／レア個数を集計し、制限違反をチェックする
+ * 両腕・両脚・両手占有パーツはパーツ単位で1カウントとする
+ */
+export function validateBuildRarityLimits(build = {}, masterData = state.masterData) {
+  const byId = masterData?.byId || {};
+  const violations = [];
+  let legendCount = 0;
+  let rareCount = 0;
+
+  const slotEntries = [
+    { key: "core", id: build.core, label: "胴体" },
+    { key: "head", id: build.head, label: "頭部" },
+    { key: "rightArm", id: build.rightArm, label: "右腕" },
+    { key: "leftArm", id: build.leftArm, label: "左腕" },
+    { key: "rightLeg", id: build.rightLeg, label: "右脚" },
+    { key: "leftLeg", id: build.leftLeg, label: "左脚" },
+    { key: "rightWeapon", id: build.rightWeapon, label: "右手装備" },
+    { key: "leftWeapon", id: build.leftWeapon, label: "左手装備" }
+  ];
+
+  const countedMultiSlotIds = new Set();
+
+  for (const entry of slotEntries) {
+    if (!entry.id) continue;
+    const part = byId[entry.id];
+    if (!part) {
+      violations.push(`不明なパーツID（${entry.label}: ${entry.id}）が含まれています。`);
+      continue;
+    }
+
+    const isMultiSlot =
+      isDualArmPart(part) || isDualLegPart(part) || isDualWeaponPart(part);
+
+    if (isMultiSlot) {
+      if (countedMultiSlotIds.has(entry.id)) {
+        continue;
+      }
+      countedMultiSlotIds.add(entry.id);
+    }
+
+    const rarity = String(part.rarity || "コモン").trim();
+    if (rarity === "レジェンド") {
+      legendCount += 1;
+    } else if (rarity === "レア") {
+      rareCount += 1;
+    }
+  }
+
+  if (legendCount > RARITY_LIMITS.legendMax) {
+    violations.push(
+      `レジェンドパーツは${RARITY_LIMITS.legendMax}個までです（現在: ${legendCount}個）。`
+    );
+  }
+  if (rareCount > RARITY_LIMITS.rareMax) {
+    violations.push(
+      `レアパーツは${RARITY_LIMITS.rareMax}個までです（現在: ${rareCount}個）。`
+    );
+  }
+
+  return {
+    ok: violations.length === 0,
+    legendCount,
+    rareCount,
+    violations
+  };
+}
+
 function setActiveBattleButton(activeBtn) {
   BATTLE_BUTTONS.forEach((btn) => {
     const isActive = btn === activeBtn;
     btn.classList.toggle("btn-primary", isActive);
     btn.classList.toggle("btn-secondary", !isActive);
   });
-}
-
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
 
 function updateBattleButtonsState() {
@@ -311,10 +311,12 @@ function clearBattleView() {
   applyFighterCardWinnerStyle(els.fighter2Card, false);
 
   if (els.battleBanner) {
+    els.battleBanner.hidden = true;
     els.battleBanner.style.display = "none";
     els.battleBanner.innerHTML = "";
   }
   if (els.battleLog) {
+    els.battleLog.hidden = true;
     els.battleLog.style.display = "none";
     els.battleLog.innerHTML = "";
   }
@@ -327,9 +329,11 @@ function renderStatus(statusInfo) {
   }
   if (els.masterError) {
     if (!statusInfo.ok) {
+      els.masterError.hidden = false;
       els.masterError.style.display = "block";
       els.masterError.textContent = statusInfo.message;
     } else {
+      els.masterError.hidden = true;
       els.masterError.style.display = "none";
       els.masterError.textContent = "";
     }
@@ -443,7 +447,7 @@ function formatLogLineHtml(line) {
     ? `<span class="log-sub" style="display:block;margin-top:2px;white-space:pre-line;">${escapeHtml(subText)}</span>`
     : "";
 
-  return `<div class="log-line${extraClass}" style="white-space:normal;line-height:1.55;">${escapeHtml(mainText)}${subHtml}</div>`;
+  return `<div class="log-line${extraClass}" style="white:normal;line-height:1.55;">${escapeHtml(mainText)}${subHtml}</div>`;
 }
 
 function renderBattleResult(result) {
@@ -457,6 +461,7 @@ function renderBattleResult(result) {
   renderFighterCard(els.fighter2Card, f2, state.lastWinnerSide === "fighter2");
 
   if (els.battleBanner) {
+    els.battleBanner.hidden = false;
     els.battleBanner.style.display = "block";
     const hasKoDraw = Array.isArray(result.logs) &&
       result.logs.some((l) => String(l).includes("相打ち"));
@@ -473,6 +478,7 @@ function renderBattleResult(result) {
   }
 
   if (els.battleLog) {
+    els.battleLog.hidden = false;
     els.battleLog.style.display = "block";
     const lines = Array.isArray(result.logs) ? result.logs : [];
     els.battleLog.innerHTML = lines.map(formatLogLineHtml).join("");
@@ -485,6 +491,7 @@ function renderTenBattleResult({ title, scoreLine, summaryLines }) {
   applyFighterCardWinnerStyle(els.fighter2Card, false);
 
   if (els.battleBanner) {
+    els.battleBanner.hidden = false;
     els.battleBanner.style.display = "block";
     els.battleBanner.innerHTML = `
       <div style="font-size:1.05rem;font-weight:700;">${escapeHtml(title)}</div>
@@ -493,6 +500,7 @@ function renderTenBattleResult({ title, scoreLine, summaryLines }) {
   }
 
   if (els.battleLog) {
+    els.battleLog.hidden = false;
     els.battleLog.style.display = "block";
     els.battleLog.innerHTML = summaryLines
       .map((line) => `<div class="log-line is-result" style="white-space:normal;line-height:1.55;">${escapeHtml(line)}</div>`)

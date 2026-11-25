@@ -6,23 +6,50 @@
   <title>ゴーレムビルダー | ジェネリックハート</title>
   <link rel="stylesheet" href="./css/common.css" />
   <link rel="stylesheet" href="./css/builder.css" />
+  <style>
+    .master-error-panel {
+      border-color: var(--danger);
+      color: #fca5a5;
+      margin-bottom: 20px;
+    }
+
+    .import-label {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .saved-section-title {
+      margin-top: 18px;
+    }
+
+    .part-section-title {
+      margin-top: 20px;
+    }
+
+    .part-section-title-lg {
+      margin-top: 22px;
+    }
+
+    .preset-row {
+      display: flex;
+      gap: 8px;
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
       <div class="brand-area">
-        <div>
-          <h1 class="brand-title">ゴーレムビルダー</h1>
-          <p class="brand-subtitle">胴体・頭部・腕部・脚部・武装を組み合わせて機体を設計</p>
-        </div>
+        <h1 class="brand-title">ゴーレムビルダー</h1>
+        <p class="brand-subtitle">胴体・頭部・腕部・脚部・武装を組み合わせて機体を設計</p>
       </div>
-        <nav class="nav-links" aria-label="画面切り替え">
-          <a class="nav-link" href="./index.html">ポータル</a>
-          <a class="nav-link" href="./builder.html">ゴーレムビルダー</a>
-          <a class="nav-link" href="./arena.html">ゴーレムアリーナ</a>
-          <a class="nav-link" href="./rule.html">ルールガイド</a>
-          <a class="nav-link" href="./parts.html">パーツ一覧</a>
-        </nav>
+      <nav class="nav-links" aria-label="画面切り替え">
+        <a class="nav-link" href="./index.html">ポータル</a>
+        <a class="nav-link is-active" href="./builder.html" aria-current="page">ゴーレムビルダー</a>
+        <a class="nav-link" href="./arena.html">ゴーレムアリーナ</a>
+        <a class="nav-link" href="./rule.html">ルールガイド</a>
+        <a class="nav-link" href="./parts.html">パーツ一覧</a>
+      </nav>
     </div>
   </header>
 
@@ -36,14 +63,14 @@
       </button>
     </div>
 
-    <div id="master-error" class="panel" style="display:none; border-color:var(--danger); color:#fca5a5; margin-bottom:20px;" role="alert"></div>
+    <div id="master-error" class="panel master-error-panel" hidden role="alert"></div>
 
     <div class="builder-3col">
       <!-- 左カラム：ビルドJSON取込・保存済み機体 -->
       <aside class="panel builder-left-col">
         <div class="json-import-box">
           <h2 class="panel-title">ビルドJSON取込</h2>
-          <label for="import-json-textarea" class="muted" style="display:block;margin-bottom:6px;">
+          <label for="import-json-textarea" class="muted import-label">
             JSONを貼り付けて取り込み
           </label>
           <textarea
@@ -54,7 +81,7 @@
           <button id="import-json-btn" type="button" class="btn btn-secondary btn-sm">JSONを取込</button>
         </div>
 
-        <h2 class="panel-title" style="margin-top:18px;">保存済み機体</h2>
+        <h2 class="panel-title saved-section-title">保存済み機体</h2>
         <div id="saved-list" class="saved-list"></div>
       </aside>
 
@@ -75,49 +102,49 @@
 
         <div class="form-group">
           <label for="preset-select">プリセット機体から読込</label>
-          <div style="display:flex;gap:8px;">
+          <div class="preset-row">
             <select id="preset-select"></select>
             <button id="apply-preset-btn" type="button" class="btn btn-secondary">反映</button>
           </div>
         </div>
 
-        <h2 class="panel-title" style="margin-top:20px;">2. 胴体（核）</h2>
+        <h2 class="panel-title part-section-title">2. 胴体（核）</h2>
         <div id="core-list" class="part-list"></div>
 
-        <h2 class="panel-title" style="margin-top:20px;">3. 頭部</h2>
+        <h2 class="panel-title part-section-title">3. 頭部</h2>
         <div id="head-list" class="part-list"></div>
 
-        <h2 class="panel-title" style="margin-top:22px;">4. 右腕</h2>
+        <h2 class="panel-title part-section-title-lg">4. 右腕</h2>
         <div id="right-arm-section">
           <h3 class="sub-block-title">右腕パーツ</h3>
           <div id="right-arm-list" class="part-list"></div>
           <div id="right-weapon-block">
             <h3 class="sub-block-title">右手武器</h3>
-            <p id="right-weapon-hint" class="disabled-hint" style="display:none;"></p>
+            <p id="right-weapon-hint" class="disabled-hint" hidden></p>
             <div id="right-weapon-list" class="part-list"></div>
           </div>
         </div>
 
-        <h2 class="panel-title" style="margin-top:22px;">5. 左腕</h2>
+        <h2 class="panel-title part-section-title-lg">5. 左腕</h2>
         <div id="left-arm-section">
-          <p id="left-arm-hint" class="disabled-hint" style="display:none;"></p>
+          <p id="left-arm-hint" class="disabled-hint" hidden></p>
           <div id="left-arm-inner">
             <h3 class="sub-block-title">左腕パーツ</h3>
             <div id="left-arm-list" class="part-list"></div>
           </div>
           <div id="left-weapon-block">
             <h3 class="sub-block-title">左手武器</h3>
-            <p id="left-weapon-hint" class="disabled-hint" style="display:none;"></p>
+            <p id="left-weapon-hint" class="disabled-hint" hidden></p>
             <div id="left-weapon-list" class="part-list"></div>
           </div>
         </div>
 
-        <h2 class="panel-title" style="margin-top:22px;">6. 右脚</h2>
+        <h2 class="panel-title part-section-title-lg">6. 右脚</h2>
         <div id="right-leg-list" class="part-list"></div>
 
-        <h2 class="panel-title" style="margin-top:22px;">7. 左脚</h2>
+        <h2 class="panel-title part-section-title-lg">7. 左脚</h2>
         <div id="left-leg-section">
-          <p id="left-leg-hint" class="disabled-hint" style="display:none;"></p>
+          <p id="left-leg-hint" class="disabled-hint" hidden></p>
           <div id="left-leg-list" class="part-list"></div>
         </div>
       </section>
@@ -126,7 +153,7 @@
       <aside class="panel builder-right-sticky">
         <h2 class="panel-title">ビルドプレビュー・出力</h2>
 
-        <div id="rarity-warning" style="display:none;" role="alert"></div>
+        <div id="rarity-warning" hidden role="alert"></div>
         <div id="preview-card" class="preview-card"></div>
 
         <div class="action-bar">
